@@ -1,4 +1,4 @@
-# Bun React Full-Stack Template
+# Freedom Admin ERP
 
 [![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://reactjs.org)
@@ -10,6 +10,7 @@ Full-stack web application template built with modern technologies. Features a c
 ## ✨ Features
 
 ### 🏗️ Architecture
+- **Modular Monolith**: Feature-based modules combining frontend/backend
 - **Frontend**: React 19 + TanStack Router + TanStack Query
 - **Backend**: Hono framework + Drizzle ORM + PostgreSQL
 - **Authentication**: Better Auth with JWT sessions
@@ -42,6 +43,13 @@ Full-stack web application template built with modern technologies. Features a c
 - **Input Validation** - Zod schemas throughout
 - **CSRF Protection** - Built-in auth security
 
+### 📦 Business Modules
+- **Authentication** - User registration, login, session management
+- **User Management** - CRUD operations, user profiles, banning/unbanning
+- **RBAC System** - Roles, permissions, and user-role assignments
+- **Audit Logging** - Activity tracking and compliance reporting
+- **Dashboard** - Analytics and system overview
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -54,7 +62,7 @@ Full-stack web application template built with modern technologies. Features a c
 1. **Clone and install dependencies**
    ```bash
    git clone <repository-url>
-   cd bun-react-template
+   cd freedom-admin-erp
    bun install
    ```
 
@@ -96,37 +104,41 @@ Visit `http://localhost:3000` to see the application.
 
 ```
 src/
-├── web/                    # Frontend (React SPA)
-│   ├── app/               # App shell & layouts
-│   │   ├── layout/        # Layout components
-│   │   ├── providers/     # Context providers
-│   │   └── router.tsx     # Router configuration
-│   ├── features/          # Feature modules
-│   │   ├── auth/          # Authentication
-│   │   ├── users/         # User management
-│   │   ├── roles/         # RBAC management
-│   │   ├── audit/         # Audit logs
-│   │   └── dashboard/     # Dashboard
-│   └── shared/            # Shared components & utilities
-│       ├── ui/            # UI components
-│       ├── lib/           # Utilities
-│       └── hooks/         # Custom hooks
-├── server/                # Backend (Hono API)
-│   ├── modules/           # Domain modules
-│   │   ├── auth/          # Authentication logic
-│   │   ├── users/         # User management
-│   │   ├── rbac/          # Role-based access
-│   │   └── audit/         # Audit logging
-│   ├── platform/          # Infrastructure
-│   │   ├── db/            # Database layer
-│   │   ├── http/          # HTTP middleware
-│   │   └── observability/ # Logging & monitoring
-│   ├── shared/            # Shared utilities
-│   │   ├── contracts/     # Type definitions
-│   │   ├── types.ts       # Global types
-│   │   └── service.ts     # Service utilities
-│   └── api/               # API routes
-│       └── rest/          # REST API endpoints
+├── modules/               # Feature modules (Domain + Presentation)
+│   ├── auth/              # Authentication module
+│   │   ├── api/           # API routes
+│   │   ├── domain/        # Business logic & contracts
+│   │   │   ├── contracts/ # Zod schemas & types
+│   │   │   ├── repo/      # Data access layer
+│   │   │   ├── services/  # Business services
+│   │   │   └── types.ts   # Module types
+│   │   └── presentation/  # UI layer
+│   │       ├── api/       # API clients & queries
+│   │       ├── pages/     # React pages
+│   │       └── ui/        # UI components
+│   ├── users/             # User management module
+│   ├── roles/             # RBAC module (permissions & roles)
+│   ├── audit/             # Audit logging module
+│   └── dashboard/         # Dashboard module
+├── platform/              # Infrastructure layer
+│   ├── database/          # Database layer (Drizzle schemas)
+│   ├── http/              # HTTP middleware & server
+│   └── observability/     # Logging & monitoring
+├── app/                   # Application shell
+│   ├── layout/            # Layout components
+│   ├── providers/         # Context providers
+│   └── router.tsx         # Router configuration
+├── shared/                # Shared utilities
+│   ├── contracts/         # Shared contracts (pagination, filtering)
+│   ├── ui/                # Shared UI components
+│   ├── lib/               # Shared utilities
+│   ├── hooks/             # Custom hooks
+│   ├── types.ts           # Global types
+│   └── events/            # Event system
+├── server/                # Server entry points
+│   ├── api/               # API route registration
+│   ├── main.ts            # Server startup
+│   └── scripts/           # Utility scripts
 ├── assets/                # Static assets
 │   └── Noto_Sans_Lao_Looped/  # Lao fonts
 ├── service-worker.ts      # PWA service worker
@@ -183,57 +195,79 @@ PORT=3000
 
 ## 🔌 API Reference
 
-### Authentication
-- `POST /api/auth/sign-in` - Sign in
-- `POST /api/auth/sign-up` - Sign up
-- `POST /api/auth/sign-out` - Sign out
+All API endpoints are organized by modules and accessible under `/api/` prefix. Each module handles its own routes and business logic.
+
+### Authentication Module (`/api/auth/*`)
+- `POST /api/auth/sign-in` - User sign in
+- `POST /api/auth/sign-up` - User registration
+- `POST /api/auth/sign-out` - User logout
 - `GET /api/auth/session` - Get current session
 
-### Users Management
-- `GET /api/users` - List users (admin)
+### Users Module (`/api/users/*`, `/api/me/*`)
+- `GET /api/users` - List users (admin only)
 - `GET /api/users/:id` - Get user details
 - `POST /api/users` - Create user
 - `PUT /api/users/:id` - Update user
 - `DELETE /api/users/:id` - Delete user
 - `POST /api/users/:id/ban` - Ban user
 - `POST /api/users/:id/unban` - Unban user
+- `GET /api/me` - Get current user profile
+- `PUT /api/me` - Update profile
 
-### RBAC Management
+### Roles Module (`/api/rbac/*`)
 - `GET /api/rbac/roles` - List roles
 - `POST /api/rbac/roles` - Create role
 - `PATCH /api/rbac/roles/:id` - Update role
 - `DELETE /api/rbac/roles/:id` - Delete role
 - `GET /api/rbac/my-permissions` - Get current user permissions
 
-### Audit Logs
+### Audit Module (`/api/audit/*`)
 - `GET /api/audit` - List audit logs
 - `GET /api/audit/:id` - Get audit log details
 
-### Profile
-- `GET /api/me` - Get current user profile
-- `PUT /api/me` - Update profile
+### Health Check
+- `GET /api/health` - System health status
 
 ## 🏗️ Architecture Patterns
 
-### Backend (Clean Architecture)
-- **Domain Layer**: Business logic in modules
-- **Application Layer**: Use cases & services
-- **Infrastructure Layer**: Database, external APIs
-- **Presentation Layer**: HTTP routes & middleware
+### 🏛️ Modular Monolith Architecture
+This project uses a **Modular Monolith** approach where each business domain is encapsulated in its own module, combining both backend and frontend code.
 
-### Frontend (Feature-Sliced Design)
-- **Features**: Domain-specific functionality
-- **Shared**: Reusable components & utilities
-- **App**: Application shell & routing
+#### Module Structure (per feature)
+```
+modules/[feature]/
+├── api/              # HTTP API routes (backend)
+├── domain/           # Business logic (backend)
+│   ├── contracts/    # Zod schemas & types
+│   ├── repo/         # Data access layer
+│   └── services/     # Business services
+└── presentation/     # UI layer (frontend)
+    ├── api/          # API clients & React Query
+    ├── pages/        # React pages
+    └── ui/           # UI components
+```
+
+#### Layer Separation
+- **Domain Layer**: Pure business logic, contracts, and data access
+- **API Layer**: HTTP routes and external API integration
+- **Presentation Layer**: UI components and user interactions
+- **Infrastructure Layer**: Database, HTTP server, logging (shared)
+
+#### Key Benefits
+- **Modularity**: Each feature is self-contained
+- **Type Safety**: End-to-end TypeScript with Zod validation
+- **Separation of Concerns**: Clear boundaries between layers
+- **Maintainability**: Easy to modify individual features
+- **Scalability**: Can be extracted into microservices later
 
 ### Database Schema
 - **Users**: User accounts & profiles
 - **Sessions**: Authentication sessions
 - **Accounts**: OAuth provider accounts
-- **Roles**: RBAC roles
-- **Permissions**: Granular permissions
+- **Roles**: RBAC roles with permissions
+- **Permissions**: Granular permission definitions
 - **UserRoles**: User-role assignments
-- **AuditLogs**: Activity logging
+- **AuditLogs**: Comprehensive activity logging
 
 ## 🔒 Security Features
 
@@ -316,6 +350,32 @@ NODE_ENV=production bun index.ts
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 🔧 Development & Extensibility
+
+### Adding New Modules
+1. Create new module folder: `src/modules/[new-feature]/`
+2. Implement the 4-layer structure:
+   - `domain/` - Business logic and contracts
+   - `api/` - HTTP routes
+   - `presentation/` - UI components
+   - `infrastructure/` - Module-specific infrastructure
+3. Register API routes in `src/server/api/rest/index.ts`
+4. Add routing in `src/app/router.tsx`
+
+### Module Independence
+Each module is self-contained with its own:
+- Zod schemas and types
+- Business logic
+- API endpoints
+- UI components
+- Tests (when added)
+
+This architecture allows for easy:
+- **Feature development** - Work on one module at a time
+- **Team collaboration** - Multiple teams can work on different modules
+- **Microservices migration** - Modules can be extracted as separate services
+- **Code maintainability** - Clear boundaries and responsibilities
+
 ## 🙏 Acknowledgments
 
 - [Bun](https://bun.sh) - Fast JavaScript runtime
@@ -325,7 +385,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Drizzle](https://drizzle.team) - ORM
 - [Better Auth](https://better-auth.com) - Authentication
 - [Biome](https://biomejs.dev) - Linter & formatter
+- [Radix UI](https://www.radix-ui.com) - UI component primitives
+- [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
 
 ---
 
-Built with ❤️ using modern web technologies
+Built with ❤️ using modern web technologies and modular architecture principles
