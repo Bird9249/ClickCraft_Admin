@@ -1,6 +1,6 @@
 import { getEffectivePermissionsService } from "@/modules/roles/domain/service/user-permissions";
-import { db } from "@/platform/db/client";
-import * as schema from "@/platform/db/schema";
+import { db } from "@/server/platform/db/client";
+import * as schema from "@/server/platform/db/schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import {

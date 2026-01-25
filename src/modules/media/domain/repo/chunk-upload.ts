@@ -1,4 +1,4 @@
-import { chunkUploadSessions, chunkUploads } from "@/platform/db/schema";
+import { chunkUploadSessions, chunkUploads } from "@/server/platform/db/schema";
 import { formatNow } from "@/shared/lib/date-time";
 import { and, eq, sql } from "drizzle-orm";
 import { rmdir } from "node:fs/promises";

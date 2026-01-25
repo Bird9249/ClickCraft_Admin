@@ -1,9 +1,9 @@
 import type { DbClient } from "@/server/platform/db/client";
 import { user } from "@/server/platform/db/schema/auth";
 import { userRole } from "@/server/platform/db/schema/rbac";
-import { Roles } from "./contracts/roles";
 import type { DbTransaction } from "@/shared/types";
 import { inArray } from "drizzle-orm";
+import { Roles } from "../contracts/roles";
 import { upsertRole } from "./upsert-role";
 
 export async function syncFromCode(

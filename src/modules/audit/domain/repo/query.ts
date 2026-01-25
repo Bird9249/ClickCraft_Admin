@@ -1,4 +1,4 @@
-import { auditLogs } from "@/platform/db/schema/audit";
+import { auditLogs } from "@/server/platform/db/schema/audit";
 import type { DbClient } from "@/server/platform/db/client";
 import type {
   OffsetPageDTO,

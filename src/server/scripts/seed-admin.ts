@@ -2,8 +2,8 @@
 
 import { syncFromCode } from "../modules/rbac/repo/sync-from-code";
 import { createUserService } from "../modules/users/service/create";
-import { db } from "../platform/db/client";
-import { logger } from "../platform/observability/logger";
+import { db } from "@/server/platform/db/client";
+import { logger } from "@/server/platform/observability/logger";
 
 async function seedAdminUser() {
   try {
