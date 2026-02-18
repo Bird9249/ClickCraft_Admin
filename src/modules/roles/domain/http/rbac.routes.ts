@@ -30,7 +30,6 @@ export function registerRbacRoutes() {
     return c.json({ permissions: perms.map((p: { id: string }) => p.id) });
   });
 
-  // CRUD roles
   app.get(
     "/roles",
     requirePermission(Permissions.users.read),
@@ -43,7 +42,6 @@ export function registerRbacRoutes() {
     },
   );
 
-  // Lookup roles for combobox (supports q, limit, skip)
   app.get(
     "/roles/lookup",
     requirePermission(Permissions.users.read),
@@ -62,7 +60,6 @@ export function registerRbacRoutes() {
         {
           limit,
           offset: skip,
-          // filter by name contains query
           filters,
         },
         client,
@@ -87,7 +84,6 @@ export function registerRbacRoutes() {
     },
   );
 
-  // Hydrate role by id for combobox
   app.get(
     "/roles/lookup/:id",
     requirePermission(Permissions.users.read),
@@ -107,10 +103,13 @@ export function registerRbacRoutes() {
     async (c) => {
       const client = c.get("db");
       const body = c.req.valid("json");
-      const result = await createRoleService(client, { input: body }, c);
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-      return c.json(result.value.created, 201);
+      try {
+        const out = await createRoleService(client, { input: body });
+        return c.json(out.created, 201);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 
@@ -123,15 +122,18 @@ export function registerRbacRoutes() {
       const client = c.get("db");
       const { id } = c.req.valid("param") as { id: string };
       const body = c.req.valid("json");
-      const result = await updateRoleService(
-        client,
-        { id, input: body },
-        c,
-      );
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-      if (!result.value) return c.json({ error: "NOT_FOUND" }, 404);
-      return c.json(result.value.updated);
+      try {
+        const { updated } = await updateRoleService(client, {
+          id,
+          input: body,
+        });
+        return c.json(updated);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (message === "Role not found" || message === "Failed to update role")
+          return c.json({ error: "NOT_FOUND" }, 404);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 
@@ -142,11 +144,16 @@ export function registerRbacRoutes() {
     async (c) => {
       const client = c.get("db");
       const { id } = c.req.valid("param") as { id: string };
-      const result = await deleteRoleService(client, { id }, c);
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-      if (!result.value?.deleted) return c.json({ error: "NOT_FOUND" }, 404);
-      return c.json(result.value.deleted);
+      try {
+        const { deleted } = await deleteRoleService(client, { id });
+        if (!deleted) return c.json({ error: "NOT_FOUND" }, 404);
+        return c.json(deleted);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (message === "Role not found")
+          return c.json({ error: "NOT_FOUND" }, 404);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 

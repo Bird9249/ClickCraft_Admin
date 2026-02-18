@@ -1,7 +1,7 @@
 import { bcryptLikeHasher } from "@/modules/auth/domain/services";
 import { schema } from "@/server/platform/db/client";
 import { userRole } from "@/server/platform/db/schema/rbac";
-import { nowISO } from "@/shared/lib/date-time";
+import { nowDate } from "@/shared/lib/date-time";
 import type { DbTransaction } from "@/shared/types";
 import { randomUUIDv7 } from "bun";
 import { eq, eq as opEq } from "drizzle-orm";
@@ -14,8 +14,8 @@ export async function updateUser(
   input: UpdateUserDTO,
   client: DbTransaction,
 ) {
-  const now = nowISO();
-  const values: Partial<UserRow> & { updatedAt: string } = {
+  const now = nowDate();
+  const values: Partial<UserRow> & { updatedAt: Date } = {
     updatedAt: now,
     ...(input.email !== undefined ? { email: input.email } : {}),
     ...(input.name !== undefined ? { name: input.name } : {}),

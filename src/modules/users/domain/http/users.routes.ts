@@ -19,7 +19,6 @@ import { updateUserService } from "../service/update";
 
 export function registerUsersRoutes() {
   const r = new Hono<HonoContext>();
-  // Note: construct repos/use-cases per request to bind request-scoped transaction
 
   r.get(
     "/",
@@ -27,7 +26,6 @@ export function registerUsersRoutes() {
     zValidator("query", OffsetPageQuerySchema),
     async (c) => {
       const client = c.get("db");
-
       const q = c.req.valid("query");
       const result = await listUsers(q, client);
       return c.json(result);
@@ -40,7 +38,6 @@ export function registerUsersRoutes() {
     zValidator("param", IdParamSchema),
     async (c) => {
       const client = c.get("db");
-
       const { id } = c.req.valid("param");
       const user = await getUserById(id, client);
       if (!user) return c.json({ error: "NOT_FOUND" }, 404);
@@ -54,11 +51,9 @@ export function registerUsersRoutes() {
     zValidator("form", CreateUserFormSchema),
     async (c) => {
       const client = c.get("db");
-
       const input = c.req.valid("form");
-      const result = await createUserService(
-        client,
-        {
+      try {
+        const out = await createUserService(client, {
           input: {
             email: input.email,
             name: input.name,
@@ -66,12 +61,12 @@ export function registerUsersRoutes() {
             roleId: input.roleId,
             image: input.image ?? undefined,
           },
-        },
-        c,
-      );
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-      return c.json(result.value.created, 201);
+        });
+        return c.json(out.created, 201);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 
@@ -82,12 +77,10 @@ export function registerUsersRoutes() {
     zValidator("form", UpdateUserFormSchema),
     async (c) => {
       const client = c.get("db");
-
       const { id } = c.req.valid("param");
       const input = c.req.valid("form");
-      const result = await updateUserService(
-        client,
-        {
+      try {
+        const { updated } = await updateUserService(client, {
           id,
           input: {
             email: input.email,
@@ -96,13 +89,14 @@ export function registerUsersRoutes() {
             password: input.password,
             image: input.imageDelete ? null : (input.image ?? undefined),
           },
-        },
-        c,
-      );
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-      if (!result.value) return c.json({ error: "NOT_FOUND" }, 404);
-      return c.json(result.value.updated);
+        });
+        return c.json(updated);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (message === "User not found")
+          return c.json({ error: "NOT_FOUND" }, 404);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 
@@ -112,13 +106,15 @@ export function registerUsersRoutes() {
     zValidator("param", IdParamSchema),
     async (c) => {
       const client = c.get("db");
-
       const { id } = c.req.valid("param");
-      const result = await deleteUserService(client, { id }, c);
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-      if (!result.value) return c.json({ error: "NOT_FOUND" }, 404);
-      return c.json(result.value.deleted);
+      try {
+        const { deleted } = await deleteUserService(client, { id });
+        if (!deleted) return c.json({ error: "NOT_FOUND" }, 404);
+        return c.json(deleted);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 
@@ -129,21 +125,19 @@ export function registerUsersRoutes() {
     zValidator("json", BanUserSchema),
     async (c) => {
       const client = c.get("db");
-
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await banUserService(
-        client,
-        {
+      try {
+        const result = await banUserService(client, {
           id,
           reason: body.reason ?? undefined,
           expires: body.expires ?? null,
-        },
-        c,
-      );
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-      return c.json(result);
+        });
+        return c.json(result);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 
@@ -153,13 +147,14 @@ export function registerUsersRoutes() {
     zValidator("param", IdParamSchema),
     async (c) => {
       const client = c.get("db");
-
       const { id } = c.req.valid("param");
-      const result = await unbanUserService(client, { id }, c);
-      if (!result.ok)
-        return c.json({ error: result.error }, result.status ?? 500);
-
-      return c.json(result);
+      try {
+        const result = await unbanUserService(client, { id });
+        return c.json(result);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return c.json({ error: message }, 500);
+      }
     },
   );
 

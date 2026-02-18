@@ -1,14 +1,19 @@
 import type { DbClient } from "@/server/platform/db/client";
 import { account } from "@/server/platform/db/schema/auth";
-import { nowISO } from "@/shared/lib/date-time";
+import { nowDate, parseISO } from "@/shared/lib/date-time";
 import type { DbTransaction } from "@/shared/types";
 import { randomUUIDv7 } from "bun";
 
 export async function createCredentialAccount(
-  params: { userId: string; passwordHash: string; now?: string },
+  params: { userId: string; passwordHash: string; now?: string | Date },
   client: DbTransaction | DbClient,
 ): Promise<void> {
-  const now = params.now ?? nowISO();
+  const now =
+    params.now == null
+      ? nowDate()
+      : params.now instanceof Date
+        ? params.now
+        : parseISO(params.now);
   await client.insert(account).values({
     id: randomUUIDv7(),
     accountId: params.userId,

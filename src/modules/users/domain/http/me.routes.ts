@@ -22,9 +22,8 @@ export function registerMeRoutes() {
     if (!authUser) return c.json({ error: "UNAUTHORIZED" }, 401);
     const input = c.req.valid("form");
     const client = c.get("db");
-    const result = await updateUserService(
-      client,
-      {
+    try {
+      const { updated } = await updateUserService(client, {
         id: authUser.id,
         input: {
           email: input.email,
@@ -33,13 +32,14 @@ export function registerMeRoutes() {
           roleId: undefined,
           image: input.imageDelete ? null : (input.image ?? undefined),
         },
-      },
-      c,
-    );
-    if (!result.ok)
-      return c.json({ error: result.error }, result.status ?? 500);
-    if (!result.value) return c.json({ error: "NOT_FOUND" }, 404);
-    return c.json({ user: result.value.updated });
+      });
+      return c.json({ user: updated });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (message === "User not found")
+        return c.json({ error: "NOT_FOUND" }, 404);
+      return c.json({ error: message }, 500);
+    }
   });
 
   return r;

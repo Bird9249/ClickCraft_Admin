@@ -1,39 +1,49 @@
 /**
  * DateTime utilities – ใช้ร่วมกันได้ทั้ง frontend และ backend
  *
- * ## Backend
- * - **เขียนลง DB / ส่งเข้า audit**: ใช้ `nowISO()` เท่านั้น (ได้ ISO string UTC)
+ * ## Backend (schema ใช้ timestamp/date แบบ mode: "date")
+ * - **เขียนค่า timestamp ลง DB** (createdAt, updatedAt, occurredAt ในตาราง): ใช้ `nowDate()` (ได้ Date object)
+ * - **เขียนค่าวันที่อย่างเดียวลง DB** (เช่น ban_expires ที่เป็น type date): ใช้ `toDateOnlyString(iso)` ได้ "yyyy-MM-dd"
+ * - **ส่ง occurredAt เข้า audit payload (JSON)**: ใช้ `nowISO()` (ได้ ISO string สำหรับ serialize)
  * - **รับค่าจาก request**: รับเป็น ISO string แล้วใช้ `parseISO(s)` ถ้าต้องการเป็น Date
  * - **Query / logic**: คิดเป็น UTC เสมอ ใช้ Date หรือ ISO string ที่มีความหมายเป็น UTC
  *
  * ## Frontend
  * - **แสดงผล**: ใช้ `formatDateTimeLocal(date)` หรือ `formatDateLocal(date)` (ตาม timezone ของ browser)
- *     ถ้ามี user timezone (เช่น จาก settings) ใช้ `formatInTimezone(date, tz, formatStr)`
  * - **ส่งค่าไป API (POST/PUT)**: ส่งเป็น ISO string เช่น `date.toISOString()` (หรือใช้ `toISOForAPI(date)`)
  * - **รับค่าจาก API**: API ส่ง ISO มาแล้ว parse เป็น Date ได้เลย เช่น `new Date(isoString)` แล้วค่อย format แสดง
  *
  * ## หลักการ
- * - DB เก็บเป็น timestamp with time zone (UTC)
+ * - DB เก็บเป็น timestamp with time zone (UTC) หรือ date; schema ใช้ mode: "date" จึงรับ/คืนค่าเป็น Date
  * - API ส่งรับเป็น ISO 8601 string
- * - แสดงผลตาม timezone ผู้ใช้ (browser หรือ user setting)
+ * - แสดงผลตาม timezone ของ browser (ผู้ใช้)
  */
 
 import { format } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
 
 // ============== Backend ==============
 
 /**
- * เวลาปัจจุบันเป็น ISO 8601 string (UTC)
+ * เวลาปัจจุบันเป็น Date object (UTC)
  *
- * **ใช้เมื่อ**: เขียนค่า createdAt/updatedAt ลง DB, ส่ง occurredAt เข้า audit payload
- * **ไม่ใช้**: แสดงผลให้ user (ให้ใช้ฟังก์ชัน format ฝั่ง frontend แทน)
+ * **ใช้เมื่อ**: เขียนค่า timestamp ลง DB (createdAt, updatedAt, occurredAt ในตาราง) ที่ schema ใช้ mode: "date"
  *
  * @example
- * // ใน repo หรือ service
- * const now = nowISO();
+ * const now = nowDate();
  * await db.insert(table).values({ createdAt: now, updatedAt: now });
- * appendAudit({ ..., occurredAt: now });
+ */
+export function nowDate(): Date {
+  return new Date();
+}
+
+/**
+ * เวลาปัจจุบันเป็น ISO 8601 string (UTC)
+ *
+ * **ใช้เมื่อ**: ส่ง occurredAt เข้า audit payload (JSON จะ serialize เป็น string), หรือที่ต้องการ string โดยตรง
+ * **ไม่ใช้**: เขียนลงคอลัมน์ timestamp ที่ mode: "date" (ให้ใช้ nowDate() แทน)
+ *
+ * @example
+ * appendAudit({ ..., occurredAt: nowISO() });
  */
 export function nowISO(): string {
   return new Date().toISOString();
@@ -55,6 +65,16 @@ export function addHoursFromNowISO(hours: number): string {
  */
 export function parseISO(iso: string): Date {
   return new Date(iso);
+}
+
+/**
+ * แปลง Date หรือ ISO string เป็นสตริง "yyyy-MM-dd" (วันอย่างเดียว)
+ * ใช้เมื่อเขียนลงคอลัมน์ type date ใน PostgreSQL (เช่น ban_expires)
+ *
+ * @param date - Date object หรือ ISO string
+ */
+export function toDateOnlyString(date: Date | string): string {
+  return format(new Date(date), "yyyy-MM-dd");
 }
 
 // ============== Frontend – แสดงผล ==============
@@ -88,33 +108,6 @@ export function formatDateForInput(date: Date | string): string {
   return format(new Date(date), "yyyy-MM-dd");
 }
 
-/**
- * แสดงวันเวลาใน timezone ที่กำหนด (เช่น จาก user settings หรือ region)
- * ใช้เมื่อแอปรองรับหลายประเทศและให้ user เลือก timezone ได้
- *
- * @param date - Date object หรือ ISO string
- * @param timezone - IANA timezone (เช่น "Asia/Singapore", "Asia/Bangkok")
- * @param formatStr - รูปแบบ date-fns (default: "yyyy-MM-dd HH:mm:ss")
- */
-export function formatInTimezone(
-  date: Date | string,
-  timezone: string,
-  formatStr = "yyyy-MM-dd HH:mm:ss",
-): string {
-  return formatInTimeZone(new Date(date), timezone, formatStr);
-}
-
-/**
- * แสดงวันเวลาใน Asia/Bangkok (UTC+7)
- * ใช้เมื่อต้องการแสดงผลแบบคงที่ตาม region ลาว/ไทย (ไม่ตาม browser)
- */
-export function formatInBangkok(
-  date: Date | string,
-  formatStr = "yyyy-MM-dd HH:mm:ss",
-): string {
-  return formatInTimeZone(new Date(date), "Asia/Bangkok", formatStr);
-}
-
 // ============== Frontend – ส่งค่าไป API ==============
 
 /**
@@ -130,24 +123,4 @@ export function toISOForAPI(
   if (date == null) return undefined;
   const d = typeof date === "string" ? new Date(date) : date;
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
-}
-
-// ============== Aliases (backward compatibility) ==============
-
-/** @deprecated ใช้ formatDateTimeLocal แทน – แสดงวันเวลาใน timezone ของ browser */
-export function formatDateTime(date: Date | string): string {
-  return formatDateTimeLocal(date);
-}
-
-/** @deprecated ใช้ formatDateLocal แทน – แสดงเฉพาะวันที่ใน timezone ของ browser */
-export function formatDate(date: Date | string): string {
-  return formatDateLocal(date);
-}
-
-/** @deprecated ใช้ formatInBangkok แทน ถ้าต้องการแสดงใน Asia/Bangkok */
-export function formatInLao(
-  date: Date | string,
-  formatStr = "yyyy-MM-dd HH:mm:ss",
-): string {
-  return formatInBangkok(date, formatStr);
 }
