@@ -164,36 +164,26 @@ export function RoleForm({
                   className="group/collapsible"
                 >
                   <div className="rounded-md border">
-                    <CollapsibleTrigger className="w-full">
-                      <div className="flex w-full items-center justify-between p-3 hover:bg-muted/50">
-                        <div className="flex items-center gap-2">
+                    <div className="flex w-full items-center gap-2 p-3 hover:bg-muted/50">
+                      <Checkbox
+                        id={`perm-group-${resource}`}
+                        checked={allChecked}
+                        onCheckedChange={(val) =>
+                          toggleMany(groupIds, Boolean(val))
+                        }
+                        aria-checked={someChecked ? "mixed" : allChecked}
+                        aria-label={`ເລືອກທັງໝົດ ${friendlyResource}`}
+                      />
+                      <CollapsibleTrigger className="flex flex-1 items-center justify-between gap-2 text-left">
+                        <span className="flex items-center gap-2 font-medium">
                           <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
-                          <Checkbox
-                            id={`perm-group-${resource}`}
-                            checked={allChecked}
-                            onCheckedChange={(val) =>
-                              toggleMany(groupIds, Boolean(val))
-                            }
-                            aria-checked={someChecked ? "mixed" : allChecked}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <label
-                            htmlFor={`perm-group-${resource}`}
-                            className="cursor-pointer font-medium"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.stopPropagation();
-                              }
-                            }}
-                          >
-                            {friendlyResource}
-                          </label>
-                        </div>
+                          {friendlyResource}
+                        </span>
                         <Badge variant="secondary" className="ml-auto">
                           {selectedCount}/{totalCount}
                         </Badge>
-                      </div>
-                    </CollapsibleTrigger>
+                      </CollapsibleTrigger>
+                    </div>
                     <CollapsibleContent>
                       <div className="grid gap-2 border-t bg-muted/30 p-3 sm:grid-cols-2 md:grid-cols-3">
                         {Object.entries(actions).map(([action, id]) => {
