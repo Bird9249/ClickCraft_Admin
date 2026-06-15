@@ -1,11 +1,12 @@
+import { RequirePermissions } from "@/modules/auth/presentation/ui/RequirePermissions";
+import { LazyPage } from "@/shared/ui/LazyPage";
 import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from "@tanstack/react-router";
 import { lazy } from "react";
-import { RequirePermissions } from "@/modules/auth/presentation/ui/RequirePermissions";
-import { LazyPage } from "@/shared/ui/LazyPage";
 
 const RootLayout = lazy(() =>
   import("./layout/RootLayout").then((module) => ({
@@ -107,6 +108,15 @@ const Forbidden = lazy(() =>
 const rootRoute = createRootRoute({
   component: RootLayout,
   errorComponent: ErrorBoundary,
+  beforeLoad: ({ location }) => {
+    if (
+      location.pathname === "/" ||
+      location.pathname === "/app" ||
+      location.pathname === "/app/"
+    ) {
+      throw redirect({ to: "/app/dashboard", replace: true });
+    }
+  },
 });
 
 const authLayoutRoute = createRoute({
