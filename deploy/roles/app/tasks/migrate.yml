@@ -1,3 +1,5 @@
+# Drizzle outputs SQL under src/server/platform/db/migrations when generated.
+# Skip quietly when the folder is missing or has no .sql files.
 - name: Check if local SQL dir exists
   delegate_to: localhost
   run_once: true
@@ -5,7 +7,18 @@
   stat: { path: "{{ local_sql_dir }}" }
   register: sql_dir
 
+- name: Find local SQL migration files
+  delegate_to: localhost
+  run_once: true
+  become: false
+  when: sql_dir.stat.exists
+  find:
+    paths: "{{ local_sql_dir }}"
+    patterns: "*.sql"
+  register: sql_files
+
 - name: Create migrations directory in shared
+  when: sql_dir.stat.exists and (sql_files.files | default([]) | length) > 0
   file:
     path: "{{ server_shared }}/migrations"
     state: directory
@@ -14,7 +27,7 @@
     mode: "0755"
 
 - name: Upload SQL migrations to shared (if present)
-  when: sql_dir.stat.exists
+  when: sql_dir.stat.exists and (sql_files.files | default([]) | length) > 0
   synchronize:
     src: "{{ local_sql_dir }}/"
     dest: "{{ server_shared }}/migrations/"
@@ -23,7 +36,7 @@
   become: false
 
 - name: Run database migrations
-  when: sql_dir.stat.exists
+  when: sql_dir.stat.exists and (sql_files.files | default([]) | length) > 0
   shell: |
     set -e
     DBURL="$(awk -F= '/^DATABASE_URL=/{print $2}' /etc/{{ app_name }}.env)"

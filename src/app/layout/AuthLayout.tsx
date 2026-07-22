@@ -15,32 +15,26 @@ export function AuthLayout() {
 
   if (isLoading) {
     return (
-      <div className="flex h-svh max-w-none items-center justify-center">
+      <div className="flex h-svh items-center justify-center bg-background">
         <Loader />
       </div>
     );
   }
+
   return (
-    <div className="flex h-svh max-w-none items-center justify-center">
-      <div className="mx-auto flex w-full max-w-md flex-col justify-center space-y-2 py-8 sm:p-8">
-        <div className="mb-4 flex items-center justify-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="me-2 h-6 w-6"
-            aria-hidden="true"
-          >
-            <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
-          </svg>
-          <h1 className="font-medium text-xl"> Admin Panel</h1>
-        </div>
+    <div className="relative flex min-h-svh flex-col overflow-hidden bg-background">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-15%,oklch(0.656_0.118_181.7/0.14),transparent_55%),radial-gradient(ellipse_55%_40%_at_100%_100%,oklch(0.971_0.003_285.7),transparent_60%),radial-gradient(ellipse_45%_35%_at_0%_90%,oklch(0.95_0.02_181.7/0.55),transparent_55%)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-15%,oklch(0.656_0.118_181.7/0.18),transparent_55%),radial-gradient(ellipse_55%_40%_at_100%_100%,oklch(0.3_0_263.3),transparent_60%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.35] mask-[radial-gradient(ellipse_70%_60%_at_50%_40%,black,transparent)] bg-[linear-gradient(to_right,oklch(0.93_0.003_285.7)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.93_0.003_285.7)_1px,transparent_1px)] bg-size-[48px_48px] dark:opacity-[0.12]"
+      />
+
+      <main className="relative z-10 flex flex-1 items-center justify-center px-5 py-12 md:px-8 md:py-16">
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 }

@@ -105,6 +105,71 @@ const Forbidden = lazy(() =>
   })),
 );
 
+const LeadsPage = lazy(() =>
+  import("@/modules/leads/presentation/pages/LeadsPage").then((module) => ({
+    default: module.LeadsPage,
+  })),
+);
+const LeadDetailPage = lazy(() =>
+  import("@/modules/leads/presentation/pages/LeadDetailPage").then(
+    (module) => ({ default: module.LeadDetailPage }),
+  ),
+);
+
+const CustomersPage = lazy(() =>
+  import("@/modules/customers/presentation/pages/CustomersPage").then(
+    (module) => ({ default: module.CustomersPage }),
+  ),
+);
+const CustomerCreatePage = lazy(() =>
+  import(
+    "@/modules/customers/presentation/pages/CustomerCreatePage"
+  ).then((module) => ({ default: module.CustomerCreatePage })),
+);
+const CustomerEditPage = lazy(() =>
+  import("@/modules/customers/presentation/pages/CustomerEditPage").then(
+    (module) => ({ default: module.CustomerEditPage }),
+  ),
+);
+
+const QuotationsPage = lazy(() =>
+  import("@/modules/finance/presentation/pages/QuotationsPage").then(
+    (module) => ({ default: module.QuotationsPage }),
+  ),
+);
+const QuotationCreatePage = lazy(() =>
+  import(
+    "@/modules/finance/presentation/pages/QuotationCreatePage"
+  ).then((module) => ({ default: module.QuotationCreatePage })),
+);
+const QuotationEditPage = lazy(() =>
+  import("@/modules/finance/presentation/pages/QuotationEditPage").then(
+    (module) => ({ default: module.QuotationEditPage }),
+  ),
+);
+
+const InvoicesPage = lazy(() =>
+  import("@/modules/finance/presentation/pages/InvoicesPage").then(
+    (module) => ({ default: module.InvoicesPage }),
+  ),
+);
+const InvoiceCreatePage = lazy(() =>
+  import(
+    "@/modules/finance/presentation/pages/InvoiceCreatePage"
+  ).then((module) => ({ default: module.InvoiceCreatePage })),
+);
+const InvoiceEditPage = lazy(() =>
+  import("@/modules/finance/presentation/pages/InvoiceEditPage").then(
+    (module) => ({ default: module.InvoiceEditPage }),
+  ),
+);
+
+const ReceiptsPage = lazy(() =>
+  import("@/modules/finance/presentation/pages/ReceiptsPage").then(
+    (module) => ({ default: module.ReceiptsPage }),
+  ),
+);
+
 const rootRoute = createRootRoute({
   component: RootLayout,
   errorComponent: ErrorBoundary,
@@ -263,6 +328,150 @@ const settingsRoute = createRoute({
   ),
 });
 
+const leadsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/leads",
+  component: () => (
+    <RequirePermissions all={["leads:read"]}>
+      <LazyPage>
+        <LeadsPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const leadDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/leads/$id",
+  component: () => (
+    <RequirePermissions all={["leads:read"]}>
+      <LazyPage>
+        <LeadDetailPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const customersRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/customers",
+  component: () => (
+    <RequirePermissions all={["customers:read"]}>
+      <LazyPage>
+        <CustomersPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const customerCreateRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/customers/create",
+  component: () => (
+    <RequirePermissions all={["customers:read"]} any={["customers:create"]}>
+      <LazyPage>
+        <CustomerCreatePage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const customerEditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/customers/$id/edit",
+  component: () => (
+    <RequirePermissions all={["customers:read"]} any={["customers:update"]}>
+      <LazyPage>
+        <CustomerEditPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const quotationsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/quotations",
+  component: () => (
+    <RequirePermissions all={["finance:read"]}>
+      <LazyPage>
+        <QuotationsPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const quotationCreateRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/quotations/create",
+  component: () => (
+    <RequirePermissions all={["finance:read"]} any={["finance:write"]}>
+      <LazyPage>
+        <QuotationCreatePage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const quotationEditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/quotations/$id/edit",
+  component: () => (
+    <RequirePermissions all={["finance:read"]} any={["finance:write"]}>
+      <LazyPage>
+        <QuotationEditPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const invoicesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/invoices",
+  component: () => (
+    <RequirePermissions all={["finance:read"]}>
+      <LazyPage>
+        <InvoicesPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const invoiceCreateRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/invoices/create",
+  component: () => (
+    <RequirePermissions all={["finance:read"]} any={["finance:write"]}>
+      <LazyPage>
+        <InvoiceCreatePage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const invoiceEditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/invoices/$id/edit",
+  component: () => (
+    <RequirePermissions all={["finance:read"]} any={["finance:write"]}>
+      <LazyPage>
+        <InvoiceEditPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
+const receiptsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/receipts",
+  component: () => (
+    <RequirePermissions all={["finance:read"]}>
+      <LazyPage>
+        <ReceiptsPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
 const forbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/errors/forbidden",
@@ -287,6 +496,18 @@ export const routeTree = rootRoute.addChildren([
     auditDetailRoute,
     profileRoute,
     settingsRoute,
+    leadsRoute,
+    leadDetailRoute,
+    customersRoute,
+    customerCreateRoute,
+    customerEditRoute,
+    quotationsRoute,
+    quotationCreateRoute,
+    quotationEditRoute,
+    invoicesRoute,
+    invoiceCreateRoute,
+    invoiceEditRoute,
+    receiptsRoute,
   ]),
   forbiddenRoute,
 ]);

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784744167121,
+      "tag": "0000_glossy_tusk",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784745600000,
+      "tag": "0001_show_signature",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784746200000,
+      "tag": "0002_finance_settings",
+      "breakpoints": true
+    }
+  ]
+}

@@ -190,6 +190,28 @@ if (hasManifest) {
   console.log("📦 Copied manifest.webmanifest to output directory");
 }
 
+// Copy favicons to dist root (stable public URLs)
+const faviconDir = path.resolve("src", "assets", "favicon_io");
+if (existsSync(faviconDir)) {
+  const faviconFiles = [...new Bun.Glob("*").scanSync(faviconDir)].filter(
+    (file) =>
+      !file.endsWith("/") &&
+      !file.endsWith(".webmanifest") &&
+      !file.startsWith("."),
+  );
+
+  for (const file of faviconFiles) {
+    await Bun.write(
+      path.join(outdir, file),
+      Bun.file(path.join(faviconDir, file)),
+    );
+  }
+
+  console.log(
+    `📦 Copied ${faviconFiles.length} favicon${faviconFiles.length === 1 ? "" : "s"} to dist root`,
+  );
+}
+
 // Copy static assets (e.g., fonts) to output
 const assetsDir = path.resolve("src", "assets");
 if (existsSync(assetsDir)) {

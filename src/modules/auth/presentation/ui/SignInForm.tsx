@@ -11,6 +11,7 @@ import {
   toast,
   zodResolver,
 } from "@/components/kit";
+import { cn } from "@/lib/utils";
 import { authClient } from "../api/client";
 import { useAuthState } from "../model/useAuthState";
 
@@ -27,7 +28,7 @@ export default function SignInForm() {
   const { isLoading } = useAuthState();
 
   const form = RHF.useForm({
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", rememberMe: false },
     resolver: zodResolver(SignInFormSchema),
   });
 
@@ -51,23 +52,38 @@ export default function SignInForm() {
   }
 
   return (
-    <FormRoot<ISignInFormSchema> methods={form} onSubmit={handleSubmit}>
+    <FormRoot<ISignInFormSchema>
+      methods={form}
+      onSubmit={handleSubmit}
+      className="gap-5"
+    >
       <FormInput
         name="email"
         label="ອີເມວ"
         requiredMark
         placeholder="name@example.com"
+        autoComplete="email"
       />
       <FormPassword
         name="password"
         label="ລະຫັດຜ່ານ"
         requiredMark
         placeholder="********"
+        autoComplete="current-password"
       />
 
       <FormCheckbox name="rememberMe" label="ຈໍາຂ້ອຍໄວ້" />
 
-      <Button type="submit" isLoading={isLoading} className="w-full">
+      <Button
+        type="submit"
+        size="lg"
+        isLoading={isLoading}
+        className={cn(
+          "mt-1 h-11 w-full rounded-md text-base shadow-none",
+          "transition-all duration-200 ease-out motion-reduce:transition-none",
+          "hover:scale-[1.02] hover:bg-[#008f7d] active:scale-[1.01]",
+        )}
+      >
         ເຂົ້າລະບົບ
       </Button>
     </FormRoot>

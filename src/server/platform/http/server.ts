@@ -6,10 +6,29 @@ import { createRestRoutes } from "../../api/rest";
 import { serverContext } from "./context";
 import { createHttpLogger } from "./middleware/logger";
 
+/** @elysiajs/cors expects origin fn to return boolean `true` (not the origin string). */
+function resolveCorsOrigin(request: Request): boolean {
+  const allowed = (process.env.CORS_ORIGIN || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  if (allowed.includes(origin)) return true;
+  // Dev convenience: allow any localhost origin when list includes one localhost entry
+  if (
+    origin.startsWith("http://localhost:") &&
+    allowed.some((o) => o.startsWith("http://localhost"))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function createServer() {
   const app = new Elysia({ prefix: "/api" }).use(
     cors({
-      origin: process.env.CORS_ORIGIN || "",
+      origin: resolveCorsOrigin,
       allowedHeaders: ["Content-Type", "Authorization"],
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       exposeHeaders: ["Content-Type", "Authorization"],

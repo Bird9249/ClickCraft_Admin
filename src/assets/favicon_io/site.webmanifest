@@ -1,0 +1,20 @@
+{
+  "name": "ClickCraft Admin",
+  "short_name": "ClickCraft",
+  "description": "ClickCraft Admin dashboard",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "icons": [
+    {
+      "sizes": "192x192",
+      "src": "/android-chrome-192x192.png",
+      "type": "image/png"
+    },
+    {
+      "sizes": "512x512",
+      "src": "/android-chrome-512x512.png",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#00A896"
+}

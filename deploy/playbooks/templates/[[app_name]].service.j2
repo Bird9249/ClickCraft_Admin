@@ -1,5 +1,5 @@
 [Unit]
-Description={{ app_name }} API (Bun/Hono)
+Description={{ app_name }} (Bun / Elysia + SPA)
 After=network.target
 
 [Service]
@@ -7,8 +7,8 @@ User={{ app_user }}
 Group={{ app_group }}
 WorkingDirectory={{ server_current }}
 EnvironmentFile=/etc/{{ app_name }}.env
-ExecStart=/root/.bun/bin/bun ./index.ts
 Environment=NODE_ENV=production
+ExecStart=/root/.bun/bin/bun ./index.ts
 Restart=always
 RestartSec=3
 

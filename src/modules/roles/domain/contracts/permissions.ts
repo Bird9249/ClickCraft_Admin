@@ -9,6 +9,23 @@ export const Permissions = {
   audit: {
     read: "audit:read",
   },
+  customers: {
+    create: "customers:create",
+    read: "customers:read",
+    update: "customers:update",
+    delete: "customers:delete",
+  },
+  finance: {
+    read: "finance:read",
+    write: "finance:write",
+    issue: "finance:issue",
+    void: "finance:void",
+  },
+  leads: {
+    read: "leads:read",
+    update: "leads:update",
+    convert: "leads:convert",
+  },
 } as const;
 
 export const ALL_PERMISSIONS = Object.entries(Permissions).flatMap(
@@ -18,10 +35,12 @@ export const ALL_PERMISSIONS = Object.entries(Permissions).flatMap(
 
 export type PermissionId = (typeof ALL_PERMISSIONS)[number]["id"];
 
-// Human-friendly labels for rendering in UI
 export const RESOURCE_LABELS: Record<string, string> = {
   users: "ຜູ້ໃຊ້",
   audit: "ບັນທຶກການກວດກາ",
+  customers: "ລູກຄ້າ",
+  finance: "ການເງິນ",
+  leads: "ຄຳຂໍໃບສະເໜີລາຄາ",
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -30,6 +49,10 @@ export const ACTION_LABELS: Record<string, string> = {
   update: "ແກ້ໄຂ",
   delete: "ລຶບ",
   ban: "ລະງັບ",
+  write: "ຂຽນ",
+  issue: "ອອກເອກະສານ",
+  void: "ຍົກເລີກ",
+  convert: "ແປງ",
   all: "ທັງໝົດ",
 };
 

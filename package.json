@@ -64,20 +64,24 @@
   "private": true,
   "scripts": {
     "build": "bun run build.ts",
-    "build:all": "bun run build.ts && bun run compile && bun run compile:worker",
+    "build:all": "bun run build.ts && bun run compile",
     "compile": "bun build src/server/main.ts --outdir ./out/server --target bun",
-    "compile:worker": "bun build src/server/worker.ts --outdir ./out/worker --target bun",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:pull": "drizzle-kit pull",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:seed:admin": "bun run src/server/scripts/seed-admin.ts",
+    "db:seed:finance": "bun run src/server/scripts/seed-finance-demo.ts",
+    "db:seed:leads": "bun run src/server/scripts/seed-leads-demo.ts",
+    "test:leads": "bun test src/modules/leads",
     "dev": "bun --hot index-dev.ts",
     "format": "biome format .",
     "lint": "biome check .",
     "rbac:sync": "bun run src/modules/roles/domain/scripts/sync.ts",
-    "start": "NODE_ENV=production bun index.ts",
-    "worker": "WORKER_PORT=3001 bun run src/server/worker.ts"
+    "test": "bun test",
+    "test:finance": "bun test src/modules/finance",
+    "start": "NODE_ENV=production bun index.ts"
   },
   "type": "module",
   "version": "0.1.0"

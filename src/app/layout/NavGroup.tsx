@@ -40,7 +40,9 @@ export function NavGroup({ title, items }: NavGroupProps) {
   if (visibleItems.length === 0) return null;
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+      <SidebarGroupLabel className="font-medium text-muted-foreground/90">
+        {title}
+      </SidebarGroupLabel>
       <SidebarMenu>
         {visibleItems.map((item) => {
           const key = `${item.title}-${item.url}`;
@@ -60,8 +62,15 @@ export function NavGroup({ title, items }: NavGroupProps) {
   );
 }
 
+const activeItemClass =
+  "data-[active=true]:bg-primary/10 data-[active=true]:font-medium data-[active=true]:text-primary data-[active=true]:hover:bg-primary/15 data-[active=true]:hover:text-primary";
+
 function NavBadge({ children }: { children: ReactNode }) {
-  return <Badge className="rounded-full px-1 py-0 text-xs">{children}</Badge>;
+  return (
+    <Badge className="rounded-md bg-primary/10 px-1.5 py-0 text-primary text-xs hover:bg-primary/10">
+      {children}
+    </Badge>
+  );
 }
 
 function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
@@ -72,6 +81,7 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
         asChild
         isActive={checkIsActive(href, item)}
         tooltip={item.title}
+        className={activeItemClass}
       >
         <Link to={item.url} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon />}
@@ -99,7 +109,7 @@ function SidebarMenuCollapsible({
     >
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title}>
+          <SidebarMenuButton tooltip={item.title} className={activeItemClass}>
             {item.icon && <item.icon />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
@@ -113,6 +123,7 @@ function SidebarMenuCollapsible({
                 <SidebarMenuSubButton
                   asChild
                   isActive={checkIsActive(href, subItem)}
+                  className={activeItemClass}
                 >
                   <Link to={subItem.url} onClick={() => setOpenMobile(false)}>
                     {subItem.icon && <subItem.icon />}
@@ -143,6 +154,7 @@ function SidebarMenuCollapsedDropdown({
           <SidebarMenuButton
             tooltip={item.title}
             isActive={checkIsActive(href, item)}
+            className={activeItemClass}
           >
             {item.icon && <item.icon />}
             <span>{item.title}</span>

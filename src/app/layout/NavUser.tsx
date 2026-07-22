@@ -42,7 +42,7 @@ export function NavUser() {
                     src={resolveImageSrc(user?.image) ?? ""}
                     alt={user?.name ?? ""}
                   />
-                  <AvatarFallback className="rounded-lg">
+                  <AvatarFallback className="rounded-lg bg-primary/10 font-medium text-primary">
                     {getInitials(user?.name ?? "")}
                   </AvatarFallback>
                 </Avatar>
@@ -68,7 +68,7 @@ export function NavUser() {
                       src={resolveImageSrc(user?.image) ?? ""}
                       alt={user?.name ?? ""}
                     />
-                    <AvatarFallback className="rounded-lg">
+                    <AvatarFallback className="rounded-lg bg-primary/10 font-medium text-primary">
                       {getInitials(user?.name ?? "")}
                     </AvatarFallback>
                   </Avatar>

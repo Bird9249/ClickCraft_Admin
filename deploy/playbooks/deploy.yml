@@ -1,4 +1,4 @@
-- name: Deploy API server only
+- name: Deploy ClickCraft Admin (API + SPA)
   hosts: prod
   become: true
   vars_files:
@@ -14,69 +14,94 @@
         group: "{{ app_group }}"
         mode: "0755"
       loop:
+        - "{{ app_root }}"
         - "{{ server_releases }}"
         - "{{ server_shared }}"
         - "{{ server_shared }}/uploads"
-        - "{{ server_shared }}/uploads/media"
+
+    - name: Ensure runtime env file exists
+      stat:
+        path: "/etc/{{ app_name }}.env"
+      register: env_file
+
+    - name: Fail if env file missing
+      fail:
+        msg: >-
+          Missing /etc/{{ app_name }}.env —
+          copy from deploy/templates/env.example and fill secrets.
+      when: not env_file.stat.exists
+
   tasks:
-    - name: Assert server dist exists
-      run_once: true
+    - name: Build Admin locally (frontend + compiled API)
       delegate_to: localhost
+      run_once: true
       become: false
-      stat: { path: "{{ local_server_dist }}" }
-      register: server_dist
+      command: bun run build:all
+      args:
+        chdir: "{{ local_repo }}"
+      changed_when: true
 
-    - name: Fail if server dist missing
-      run_once: true
+    - name: Assert out/ exists
       delegate_to: localhost
+      run_once: true
       become: false
-      fail: { msg: "out/ missing - build failed" }
-      when: not server_dist.stat.exists
+      stat: { path: "{{ local_out_dir }}" }
+      register: out_dir
 
-    - name: Check if index.ts exists in server dist
-      run_once: true
+    - name: Fail if out/ missing
       delegate_to: localhost
+      run_once: true
       become: false
-      stat: { path: "{{ local_server_dist }}/index.ts" }
-      register: index_ts
+      fail: { msg: "out/ missing — bun run build:all failed" }
+      when: not out_dir.stat.exists
 
-    - name: Fail if index.ts missing
-      run_once: true
+    - name: Assert compiled API exists
       delegate_to: localhost
+      run_once: true
       become: false
-      fail: { msg: "out/index.ts missing - build failed" }
-      when: not index_ts.stat.exists
+      stat: { path: "{{ local_out_dir }}/server/main.js" }
+      register: server_bundle
 
-    - name: Check if worker.ts exists in server dist
-      run_once: true
+    - name: Fail if server bundle missing
       delegate_to: localhost
-      become: false
-      stat: { path: "{{ local_server_dist }}/worker/worker.js" }
-      register: worker_ts
-
-    - name: Fail if worker.ts missing
       run_once: true
-      delegate_to: localhost
       become: false
-      fail: { msg: "out/worker.ts missing - build failed" }
-      when: not worker_ts.stat.exists
+      fail: { msg: "out/server/main.js missing — compile step failed" }
+      when: not server_bundle.stat.exists
 
     - name: Assert frontend dist exists
-      run_once: true
       delegate_to: localhost
+      run_once: true
       become: false
-      stat: { path: "{{ local_repo }}/out/dist" }
+      stat: { path: "{{ local_out_dir }}/dist" }
       register: frontend_dist
 
     - name: Fail if frontend dist missing
-      run_once: true
       delegate_to: localhost
+      run_once: true
       become: false
-      fail: { msg: "out/dist missing - build failed" }
+      fail: { msg: "out/dist missing — frontend build failed" }
       when: not frontend_dist.stat.exists
 
-    - name: Include deploy unified tasks
+    - name: Assert production entrypoint exists
+      delegate_to: localhost
+      run_once: true
+      become: false
+      stat: { path: "{{ local_repo }}/index.ts" }
+      register: index_ts
+
+    - name: Fail if index.ts missing
+      delegate_to: localhost
+      run_once: true
+      become: false
+      fail: { msg: "index.ts missing at Admin repo root" }
+      when: not index_ts.stat.exists
+
+    - name: Include release tasks
       include_tasks: ../roles/app/tasks/release_unified.yml
+
+    - name: Include migrate tasks (SQL files if present)
+      include_tasks: ../roles/app/tasks/migrate.yml
 
     - name: Prune old server releases
       shell: |
@@ -84,6 +109,3 @@
         ls -1t | tail -n +{{ (keep_releases + 1) | int }} | xargs -r rm -rf
       changed_when: false
       failed_when: false
-
-
-

@@ -54,7 +54,7 @@ export async function showSystemNotification(
     await registration.showNotification(payload.title, {
       body: payload.body,
       tag: payload.tag,
-      icon: payload.icon ?? "/logo.svg",
+      icon: payload.icon ?? "/android-chrome-192x192.png",
       data: { to: payload.to },
     });
   } catch {

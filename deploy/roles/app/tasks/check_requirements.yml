@@ -1,23 +1,31 @@
-- name: Check if bun is installed
-  command: which bun
+- name: Check if bun is installed on deploy host (runtime)
+  command: /root/.bun/bin/bun --version
   register: bun_check
   failed_when: false
   changed_when: false
 
-- name: Fail if bun is not installed
+- name: Fail if bun is not installed on server
   fail:
-    msg: "Bun is not installed. Please install bun first: curl -fsSL https://bun.sh/install | bash"
+    msg: >-
+      Bun is not installed on the server at /root/.bun/bin/bun.
+      Install: curl -fsSL https://bun.sh/install | bash
   when: bun_check.rc != 0
 
-- name: Check if rsync is installed
+- name: Check if rsync is installed on controller
+  delegate_to: localhost
+  run_once: true
+  become: false
   command: which rsync
   register: rsync_check
   failed_when: false
   changed_when: false
 
-- name: Fail if rsync is not installed
+- name: Fail if rsync is not installed locally
+  delegate_to: localhost
+  run_once: true
+  become: false
   fail:
-    msg: "rsync is not installed. Please install rsync: apt-get install rsync"
+    msg: "rsync is required on the machine running Ansible"
   when: rsync_check.rc != 0
 
 - name: Check if environment file exists
@@ -27,7 +35,7 @@
 
 - name: Fail if environment file does not exist
   fail:
-    msg: "Environment file /etc/{{ app_name }}.env does not exist. Please create it first."
+    msg: "Environment file /etc/{{ app_name }}.env does not exist. Copy deploy/templates/env.example first."
   when: not env_file.stat.exists
 
 - name: Check if PostgreSQL is running
@@ -38,5 +46,5 @@
 
 - name: Warn if PostgreSQL is not running
   debug:
-    msg: "PostgreSQL is not running. Please start it: systemctl start postgresql"
-  when: postgres_status.status.ActiveState != "active"
+    msg: "PostgreSQL is not running. Start it if the DB is on this host: systemctl start postgresql"
+  when: postgres_status.status is defined and postgres_status.status.ActiveState != "active"

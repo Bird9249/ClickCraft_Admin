@@ -1,15 +1,24 @@
-import { Bell, Compass, Monitor, PanelsTopLeft, UserCog } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  Compass,
+  Monitor,
+  PanelsTopLeft,
+  UserCog,
+} from "lucide-react";
 import { Header } from "@/app/layout/Header";
 import { Main } from "@/app/layout/Main";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/kit";
 import { AccountSection } from "../ui/AccountSection";
 import { AppearanceSection } from "../ui/AppearanceSection";
+import { BankPaymentSection } from "../ui/BankPaymentSection";
 import { LayoutSection } from "../ui/LayoutSection";
 import { NotificationsSection } from "../ui/NotificationsSection";
 import { OnboardingSection } from "../ui/OnboardingSection";
 
 const tabs = [
   { value: "account", label: "ບັນຊີ", icon: UserCog },
+  { value: "bank", label: "ທະນາຄານ", icon: Building2 },
   { value: "appearance", label: "ຮູບລັກສະນະ", icon: Monitor },
   { value: "notifications", label: "ການແຈ້ງເຕືອນ", icon: Bell },
   { value: "layout", label: "ໂຄງຮ່າງ", icon: PanelsTopLeft },
@@ -25,7 +34,7 @@ export function SettingsPage() {
         <div className="mb-4">
           <h2 className="font-bold text-2xl tracking-tight">ການຕັ້ງຄ່າ</h2>
           <p className="text-muted-foreground">
-            ຈັດການບັນຊີ, ຮູບລັກສະນະ ແລະ ການຕັ້ງຄ່າສ່ວນຕົວຂອງທ່ານ.
+            ຈັດການບັນຊີ, ບັນຊີທະນາຄານສຳລັບໃບເກັບເງິນ ແລະການຕັ້ງຄ່າສ່ວນຕົວ.
           </p>
         </div>
 
@@ -41,6 +50,9 @@ export function SettingsPage() {
 
           <TabsContent value="account">
             <AccountSection />
+          </TabsContent>
+          <TabsContent value="bank">
+            <BankPaymentSection />
           </TabsContent>
           <TabsContent value="appearance">
             <AppearanceSection />

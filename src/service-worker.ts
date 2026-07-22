@@ -94,8 +94,8 @@ function showNotification(payload: ShowNotificationPayload) {
   return self.registration.showNotification(title, {
     body,
     tag,
-    icon: icon ?? "/logo.svg",
-    badge: "/logo.svg",
+    icon: icon ?? "/android-chrome-192x192.png",
+    badge: "/favicon-32x32.png",
     data: { to },
   });
 }

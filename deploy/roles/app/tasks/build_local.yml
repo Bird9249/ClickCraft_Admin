@@ -1,59 +1,36 @@
-- name: Ensure bun available for local build (document)
-  debug:
-    msg: "Requires bun on localhost in PATH; install from https://bun.sh if missing"
-
-- name: Assert server dist exists
+- name: Build Admin locally (frontend + compiled API)
   delegate_to: localhost
   run_once: true
   become: false
-  stat: { path: "{{ local_server_dist }}" }
-  register: server_dist
+  command: bun run build:all
+  args:
+    chdir: "{{ local_repo }}"
+  changed_when: true
 
-- name: Fail if server dist missing
+- name: Assert out/server/main.js exists
   delegate_to: localhost
   run_once: true
   become: false
-  fail: { msg: "out/ missing - build failed" }
-  when: not server_dist.stat.exists
+  stat: { path: "{{ local_out_dir }}/server/main.js" }
+  register: server_bundle
 
-- name: Check if index.ts exists in server dist
+- name: Fail if server bundle missing
   delegate_to: localhost
   run_once: true
   become: false
-  stat: { path: "{{ local_server_dist }}/index.ts" }
-  register: index_ts
+  fail: { msg: "out/server/main.js missing - build:all failed" }
+  when: not server_bundle.stat.exists
 
-- name: Fail if index.ts missing
+- name: Assert out/dist exists
   delegate_to: localhost
   run_once: true
   become: false
-  fail: { msg: "out/index.ts missing - build failed" }
-  when: not index_ts.stat.exists
-
-- name: Check if worker.ts exists in server dist
-  delegate_to: localhost
-  run_once: true
-  become: false
-  stat: { path: "{{ local_server_dist }}/worker.ts" }
-  register: worker_ts
-
-- name: Fail if worker.ts missing
-  delegate_to: localhost
-  run_once: true
-  become: false
-  fail: { msg: "out/worker.ts missing - build failed" }
-  when: not worker_ts.stat.exists
-
-- name: Assert frontend dist exists
-  delegate_to: localhost
-  run_once: true
-  become: false
-  stat: { path: "{{ local_repo }}/out/dist" }
+  stat: { path: "{{ local_out_dir }}/dist" }
   register: frontend_dist
 
 - name: Fail if frontend dist missing
   delegate_to: localhost
   run_once: true
   become: false
-  fail: { msg: "out/dist missing - build failed" }
+  fail: { msg: "out/dist missing - build:all failed" }
   when: not frontend_dist.stat.exists

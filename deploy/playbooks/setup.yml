@@ -1,4 +1,4 @@
-- name: Initial server setup
+- name: Initial server setup (systemd + nginx + SSL)
   hosts: prod
   become: true
   vars_files:
@@ -6,20 +6,48 @@
   vars:
     ansible_roles_path: ../roles
   tasks:
-    - name: Create systemd service files
+    - name: Ensure app directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+      loop:
+        - "{{ app_root }}"
+        - "{{ server_releases }}"
+        - "{{ server_shared }}"
+        - "{{ server_shared }}/uploads"
+
+    - name: Create systemd service file
       template:
-        src: "{{ item }}.j2"
-        dest: "/etc/systemd/system/{{ item | replace('[[app_name]]', app_name) }}"
+        src: "[[app_name]].service.j2"
+        dest: "/etc/systemd/system/{{ app_name }}.service"
         owner: root
         group: root
         mode: "0644"
-      loop:
-        - "[[app_name]].service"
-        - "[[app_name]]-worker.service"
       notify:
         - daemon-reload
 
     - name: Ensure nginx is installed and running
+      apt:
+        name: nginx
+        state: present
+        update_cache: true
+
+    - name: Ensure certbot is installed
+      apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Ensure rsync is installed
+      apt:
+        name: rsync
+        state: present
+
+    - name: Start nginx
       systemd:
         name: nginx
         state: started
@@ -32,30 +60,6 @@
         owner: www-data
         group: www-data
         mode: "0755"
-
-    - name: Wait for apt to be available
-      shell: |
-        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-          echo "Waiting for apt to be available..."
-          sleep 5
-        done
-      register: apt_wait
-      failed_when: false
-
-    - name: Install certbot
-      apt:
-        name: certbot
-        state: present
-        update_cache: yes
-      retries: 3
-      delay: 10
-
-    - name: Install python3-certbot-nginx plugin
-      apt:
-        name: python3-certbot-nginx
-        state: present
-      retries: 3
-      delay: 10
 
     - name: Stop nginx before SSL setup
       systemd:
@@ -70,19 +74,19 @@
         group: root
         mode: "0644"
 
-
     - name: Enable temporary HTTP config
       file:
         src: "/etc/nginx/sites-available/{{ app_name }}"
         dest: "/etc/nginx/sites-enabled/{{ app_name }}"
         state: link
+        force: true
 
     - name: Start nginx for SSL challenge
       systemd:
         name: nginx
         state: started
 
-    - name: Obtain SSL certificate for API domain
+    - name: Obtain SSL certificate
       command: >
         certbot certonly --nginx
         --non-interactive --agree-tos
@@ -90,10 +94,9 @@
         --domains {{ api_domain }}
         --expand
       register: api_ssl_result
-      failed_when: api_ssl_result.rc not in [0, 1]  # 1 = already exists
+      failed_when: api_ssl_result.rc not in [0, 1]
 
-
-    - name: Remove temporary HTTP config
+    - name: Remove temporary HTTP site enablement
       file:
         path: "/etc/nginx/sites-enabled/{{ app_name }}"
         state: absent
@@ -111,6 +114,7 @@
         src: "/etc/nginx/sites-available/{{ app_name }}"
         dest: "/etc/nginx/sites-enabled/{{ app_name }}"
         state: link
+        force: true
 
     - name: Test nginx configuration
       command: nginx -t
@@ -129,7 +133,7 @@
 
     - name: Setup SSL auto-renewal cron job
       cron:
-        name: "SSL Certificate Auto-Renewal"
+        name: "SSL Certificate Auto-Renewal ({{ app_name }})"
         minute: "0"
         hour: "2"
         job: "/usr/bin/certbot renew --quiet --nginx --post-hook 'systemctl reload nginx'"

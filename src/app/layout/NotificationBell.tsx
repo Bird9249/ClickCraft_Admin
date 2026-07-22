@@ -33,7 +33,7 @@ const typeStyles: Record<
   info: { icon: Info, className: "bg-primary/10 text-primary" },
   success: {
     icon: CircleCheck,
-    className: "bg-emerald-600/10 text-emerald-600",
+    className: "bg-primary/10 text-primary",
   },
   warning: {
     icon: AlertTriangle,

@@ -1,11 +1,5 @@
-import type { PermissionId } from "@/modules/roles/domain/contracts/permissions";
 import type { LinkProps } from "@tanstack/react-router";
-
-type Team = {
-  name: string;
-  logo: React.ElementType;
-  plan: string;
-};
+import type { PermissionId } from "@/modules/roles/domain/contracts/permissions";
 
 type BaseNavItem = {
   title: string;
@@ -33,7 +27,6 @@ type NavGroup = {
 };
 
 type SidebarData = {
-  teams: Team[];
   navGroups: NavGroup[];
 };
 
