@@ -26,6 +26,10 @@ export const Permissions = {
     update: "leads:update",
     convert: "leads:convert",
   },
+  distribution: {
+    read: "distribution:read",
+    write: "distribution:write",
+  },
 } as const;
 
 export const ALL_PERMISSIONS = Object.entries(Permissions).flatMap(
@@ -41,6 +45,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   customers: "ລູກຄ້າ",
   finance: "ການເງິນ",
   leads: "ຄຳຂໍໃບສະເໜີລາຄາ",
+  distribution: "ຈ່າຍແຈກແອັບ",
 };
 
 export const ACTION_LABELS: Record<string, string> = {

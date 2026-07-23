@@ -3,6 +3,7 @@ import { auditRoutes } from "@/modules/audit/api";
 import { authRoutes } from "@/modules/auth/api";
 import { customersRoutes } from "@/modules/customers/api";
 import { dashboardRoutes } from "@/modules/dashboard/api";
+import { distributionRoutes } from "@/modules/distribution/api";
 import { financeRoutes } from "@/modules/finance/api";
 import { leadsRoutes } from "@/modules/leads/api";
 import { rolesRoutes } from "@/modules/roles/api";
@@ -19,5 +20,6 @@ export function createRestRoutes() {
     .use(customersRoutes)
     .use(financeRoutes)
     .use(leadsRoutes)
+    .use(distributionRoutes)
     .use(dashboardRoutes);
 }

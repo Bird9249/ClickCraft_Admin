@@ -1,0 +1,8 @@
+/** Compute SHA-256 hex digest of a File/Blob in the browser. */
+export async function sha256Hex(file: Blob): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}

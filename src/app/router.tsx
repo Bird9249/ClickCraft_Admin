@@ -1,5 +1,3 @@
-import { RequirePermissions } from "@/modules/auth/presentation/ui/RequirePermissions";
-import { LazyPage } from "@/shared/ui/LazyPage";
 import {
   createRootRoute,
   createRoute,
@@ -7,6 +5,8 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { lazy } from "react";
+import { RequirePermissions } from "@/modules/auth/presentation/ui/RequirePermissions";
+import { LazyPage } from "@/shared/ui/LazyPage";
 
 const RootLayout = lazy(() =>
   import("./layout/RootLayout").then((module) => ({
@@ -105,6 +105,17 @@ const Forbidden = lazy(() =>
   })),
 );
 
+const DistributionPage = lazy(() =>
+  import("@/modules/distribution/presentation/pages/DistributionPage").then(
+    (module) => ({ default: module.DistributionPage }),
+  ),
+);
+const PublicDownloadPage = lazy(() =>
+  import("@/modules/distribution/presentation/pages/PublicDownloadPage").then(
+    (module) => ({ default: module.PublicDownloadPage }),
+  ),
+);
+
 const LeadsPage = lazy(() =>
   import("@/modules/leads/presentation/pages/LeadsPage").then((module) => ({
     default: module.LeadsPage,
@@ -122,9 +133,9 @@ const CustomersPage = lazy(() =>
   ),
 );
 const CustomerCreatePage = lazy(() =>
-  import(
-    "@/modules/customers/presentation/pages/CustomerCreatePage"
-  ).then((module) => ({ default: module.CustomerCreatePage })),
+  import("@/modules/customers/presentation/pages/CustomerCreatePage").then(
+    (module) => ({ default: module.CustomerCreatePage }),
+  ),
 );
 const CustomerEditPage = lazy(() =>
   import("@/modules/customers/presentation/pages/CustomerEditPage").then(
@@ -138,9 +149,9 @@ const QuotationsPage = lazy(() =>
   ),
 );
 const QuotationCreatePage = lazy(() =>
-  import(
-    "@/modules/finance/presentation/pages/QuotationCreatePage"
-  ).then((module) => ({ default: module.QuotationCreatePage })),
+  import("@/modules/finance/presentation/pages/QuotationCreatePage").then(
+    (module) => ({ default: module.QuotationCreatePage }),
+  ),
 );
 const QuotationEditPage = lazy(() =>
   import("@/modules/finance/presentation/pages/QuotationEditPage").then(
@@ -154,9 +165,9 @@ const InvoicesPage = lazy(() =>
   ),
 );
 const InvoiceCreatePage = lazy(() =>
-  import(
-    "@/modules/finance/presentation/pages/InvoiceCreatePage"
-  ).then((module) => ({ default: module.InvoiceCreatePage })),
+  import("@/modules/finance/presentation/pages/InvoiceCreatePage").then(
+    (module) => ({ default: module.InvoiceCreatePage }),
+  ),
 );
 const InvoiceEditPage = lazy(() =>
   import("@/modules/finance/presentation/pages/InvoiceEditPage").then(
@@ -328,6 +339,18 @@ const settingsRoute = createRoute({
   ),
 });
 
+const distributionRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/distribution",
+  component: () => (
+    <RequirePermissions all={["distribution:read"]}>
+      <LazyPage>
+        <DistributionPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
 const leadsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/leads",
@@ -482,8 +505,19 @@ const forbiddenRoute = createRoute({
   ),
 });
 
+const publicDownloadRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/d/$token",
+  component: () => (
+    <LazyPage>
+      <PublicDownloadPage />
+    </LazyPage>
+  ),
+});
+
 export const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute]),
+  publicDownloadRoute,
   appRoute.addChildren([
     dashboardRoute,
     rolesRoute,
@@ -496,6 +530,7 @@ export const routeTree = rootRoute.addChildren([
     auditDetailRoute,
     profileRoute,
     settingsRoute,
+    distributionRoute,
     leadsRoute,
     leadDetailRoute,
     customersRoute,

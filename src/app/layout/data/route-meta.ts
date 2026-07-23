@@ -14,6 +14,8 @@ export type RouteMeta = {
  */
 export const routeMeta: Record<string, RouteMeta> = {
   "/app/dashboard": { label: "ແຜງຄວບຄຸມ" },
+  "/app/distribution": { label: "ຈ່າຍແຈກແອັບ" },
+  "/d/$token": { label: "ດາວໂຫຼດ" },
   "/app/leads": { label: "ຄຳຂໍໃບສະເໜີລາຄາ" },
   "/app/leads/$id": {
     label: "ລາຍລະອຽດຄຳຂໍ",
