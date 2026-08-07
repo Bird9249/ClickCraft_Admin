@@ -24,23 +24,28 @@ export type NestedLineOutput = {
   children: SubItemInputDTO[];
 };
 
+function mapSubItemRows(
+  allRows: FlatLineRow[],
+  parentId: string,
+): SubItemInputDTO[] {
+  return allRows
+    .filter((row) => row.parentLineId === parentId)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((row) => ({
+      description: row.description,
+      quantity: row.quantity,
+      unitPrice: row.unitPrice,
+      sortOrder: row.sortOrder,
+      children: mapSubItemRows(allRows, row.id),
+    }));
+}
+
 export function buildLineTree(flat: FlatLineRow[]): NestedLineOutput[] {
-  const childrenByParent = new Map<string, FlatLineRow[]>();
-
-  for (const row of flat) {
-    if (!row.parentLineId) continue;
-    const siblings = childrenByParent.get(row.parentLineId) ?? [];
-    siblings.push(row);
-    childrenByParent.set(row.parentLineId, siblings);
-  }
-
   return flat
     .filter((row) => !row.parentLineId)
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((parent) => {
-      const childRows = (childrenByParent.get(parent.id) ?? []).sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
+      const childRows = flat.filter((row) => row.parentLineId === parent.id);
       const priceOn = resolvePriceOn(parent.amount, childRows, parent.priceOn);
 
       return {
@@ -51,12 +56,7 @@ export function buildLineTree(flat: FlatLineRow[]): NestedLineOutput[] {
         amount: parent.amount,
         sortOrder: parent.sortOrder,
         priceOn,
-        children: childRows.map((child) => ({
-          description: child.description,
-          quantity: child.quantity,
-          unitPrice: child.unitPrice,
-          sortOrder: child.sortOrder,
-        })),
+        children: mapSubItemRows(flat, parent.id),
       };
     });
 }
@@ -68,12 +68,17 @@ export function toLineInputs(tree: NestedLineOutput[]): LineInputDTO[] {
     unitPrice: line.unitPrice,
     sortOrder: line.sortOrder,
     priceOn: line.priceOn,
-    children: line.children.map((child) => ({
-      description: child.description,
-      quantity: child.quantity,
-      unitPrice: child.unitPrice,
-      sortOrder: child.sortOrder,
-    })),
+    children: mapSubItemsToInput(line.children),
+  }));
+}
+
+function mapSubItemsToInput(items: SubItemInputDTO[]): SubItemInputDTO[] {
+  return items.map((item) => ({
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    sortOrder: item.sortOrder,
+    children: mapSubItemsToInput(item.children ?? []),
   }));
 }
 
@@ -87,6 +92,35 @@ export type PdfLineRow = {
   isSubItem: boolean;
   showSubItemPrice?: boolean;
 };
+
+function appendPdfRows(
+  rows: PdfLineRow[],
+  items: SubItemInputDTO[],
+  depth: number,
+  priceOn: "parent" | "children",
+) {
+  for (const item of items) {
+    const nested = item.children ?? [];
+    const hasNested = nested.length > 0;
+    const showPrice = priceOn === "children" && !hasNested;
+    const childAmount = item.quantity * item.unitPrice;
+
+    rows.push({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      amount: showPrice ? childAmount : 0,
+      depth,
+      isGroup: hasNested,
+      isSubItem: true,
+      showSubItemPrice: showPrice,
+    });
+
+    if (hasNested) {
+      appendPdfRows(rows, nested, depth + 1, priceOn);
+    }
+  }
+}
 
 /** Flatten nested lines into PDF display rows (group header + indented sub-items). */
 export function linesToPdfRows(
@@ -121,19 +155,7 @@ export function linesToPdfRows(
       isSubItem: false,
     });
 
-    for (const child of parent.children) {
-      const childAmount = child.quantity * child.unitPrice;
-      rows.push({
-        description: child.description,
-        quantity: child.quantity,
-        unitPrice: child.unitPrice,
-        amount: priceOnChildren ? childAmount : 0,
-        depth: 1,
-        isGroup: false,
-        isSubItem: true,
-        showSubItemPrice: priceOnChildren,
-      });
-    }
+    appendPdfRows(rows, parent.children, 1, parent.priceOn);
   }
 
   return rows;

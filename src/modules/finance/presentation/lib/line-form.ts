@@ -1,4 +1,12 @@
-import type { LineInputDTO } from "../contracts";
+import type { LineInputDTO, SubItemInputDTO } from "../contracts";
+
+type FormSubItem = {
+  description: string;
+  quantity?: number;
+  unitPrice?: number;
+  sortOrder?: number;
+  children?: FormSubItem[];
+};
 
 type FormLine = {
   description: string;
@@ -6,13 +14,28 @@ type FormLine = {
   unitPrice: number;
   sortOrder?: number;
   priceOn?: "parent" | "children";
-  children?: Array<{
-    description: string;
-    quantity?: number;
-    unitPrice?: number;
-    sortOrder?: number;
-  }>;
+  children?: FormSubItem[];
 };
+
+function mapSubItemsToApi(items: FormSubItem[]): SubItemInputDTO[] {
+  return items.map((item, j) => ({
+    description: item.description,
+    quantity: item.quantity ?? 1,
+    unitPrice: item.unitPrice ?? 0,
+    sortOrder: item.sortOrder ?? j,
+    children: mapSubItemsToApi(item.children ?? []),
+  }));
+}
+
+function mapSubItemsToForm(items: SubItemInputDTO[]) {
+  return items.map((item) => ({
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    sortOrder: item.sortOrder,
+    children: mapSubItemsToForm(item.children ?? []),
+  }));
+}
 
 export function mapFormLinesToApi(lines: FormLine[]): LineInputDTO[] {
   return lines.map((l, i) => ({
@@ -21,12 +44,7 @@ export function mapFormLinesToApi(lines: FormLine[]): LineInputDTO[] {
     unitPrice: l.unitPrice,
     sortOrder: i,
     priceOn: l.priceOn ?? "parent",
-    children: (l.children ?? []).map((c, j) => ({
-      description: c.description,
-      quantity: c.quantity ?? 1,
-      unitPrice: c.unitPrice ?? 0,
-      sortOrder: j,
-    })),
+    children: mapSubItemsToApi(l.children ?? []),
   }));
 }
 
@@ -37,12 +55,7 @@ export function mapApiLinesToForm(
     unitPrice: number;
     sortOrder: number;
     priceOn?: "parent" | "children";
-    children?: Array<{
-      description: string;
-      quantity: number;
-      unitPrice: number;
-      sortOrder: number;
-    }>;
+    children?: SubItemInputDTO[];
   }>,
 ) {
   return lines.map((l) => ({
@@ -51,11 +64,6 @@ export function mapApiLinesToForm(
     unitPrice: l.unitPrice,
     sortOrder: l.sortOrder,
     priceOn: l.priceOn ?? "parent",
-    children: (l.children ?? []).map((c) => ({
-      description: c.description,
-      quantity: c.quantity,
-      unitPrice: c.unitPrice,
-      sortOrder: c.sortOrder,
-    })),
+    children: mapSubItemsToForm(l.children ?? []),
   }));
 }

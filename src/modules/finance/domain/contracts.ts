@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { DEFAULT_PAYMENT_SCHEDULE } from "./payment-schedule";
+import { MAX_SUB_ITEM_DEPTH, subItemDepth } from "./line-pricing";
+import { isRichTextEmpty } from "@/shared/lib/rich-text-html";
+
+const RichTextDescriptionSchema = z
+  .string()
+  .refine((val) => !isRichTextEmpty(val), { message: "ຕ້ອງໃສ່ລາຍການ" });
 
 // ─── Shared ──────────────────────────────────────────────────────────────────
 
@@ -11,22 +17,43 @@ export type IdParamDTO = z.infer<typeof IdParamSchema>;
 export const PriceOnSchema = z.enum(["parent", "children"]).default("parent");
 export type PriceOnDTO = z.infer<typeof PriceOnSchema>;
 
-export const SubItemInputSchema = z.object({
-  description: z.string().min(1, "ຕ້ອງໃສ່ລາຍການ"),
-  quantity: z.number().int().min(1).default(1),
-  unitPrice: z.number().int().min(0).default(0),
-  sortOrder: z.number().int().min(0).default(0),
-});
-export type SubItemInputDTO = z.infer<typeof SubItemInputSchema>;
+export type SubItemInputDTO = {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  sortOrder: number;
+  children: SubItemInputDTO[];
+};
 
-export const LineInputSchema = z.object({
-  description: z.string().min(1, "ຕ້ອງໃສ່ລາຍການ"),
-  quantity: z.number().int().min(1).default(1),
-  unitPrice: z.number().int().min(0).default(0),
-  sortOrder: z.number().int().min(0).default(0),
-  priceOn: PriceOnSchema,
-  children: z.array(SubItemInputSchema).default([]),
-});
+export const SubItemInputSchema: z.ZodType<SubItemInputDTO> = z.lazy(() =>
+  z.object({
+    description: RichTextDescriptionSchema,
+    quantity: z.number().int().min(1).default(1),
+    unitPrice: z.number().int().min(0).default(0),
+    sortOrder: z.number().int().min(0).default(0),
+    children: z.array(SubItemInputSchema).default([]),
+  }),
+);
+
+export const LineInputSchema = z
+  .object({
+    description: RichTextDescriptionSchema,
+    quantity: z.number().int().min(1).default(1),
+    unitPrice: z.number().int().min(0).default(0),
+    sortOrder: z.number().int().min(0).default(0),
+    priceOn: PriceOnSchema,
+    children: z.array(SubItemInputSchema).default([]),
+  })
+  .superRefine((line, ctx) => {
+    const depth = subItemDepth(line.children);
+    if (depth > MAX_SUB_ITEM_DEPTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["children"],
+        message: `Sub-items can nest at most ${MAX_SUB_ITEM_DEPTH} levels`,
+      });
+    }
+  });
 export type LineInputDTO = z.infer<typeof LineInputSchema>;
 
 export const PaymentScheduleItemSchema = z.object({

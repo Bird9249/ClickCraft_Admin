@@ -1,7 +1,7 @@
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
-import type { LineInputDTO } from "../contracts";
-import { childRowValues, parentRowValues } from "../line-pricing";
+import type { LineInputDTO, SubItemInputDTO } from "../contracts";
+import { parentRowValues, subItemRowValues } from "../line-pricing";
 
 type LineTable = typeof schema.quotationLine | typeof schema.invoiceLine;
 
@@ -46,16 +46,50 @@ async function insertNestedLines(
 
     if (!parent) throw new Error("Failed to insert line");
 
-    const children = line.children ?? [];
-    if (children.length === 0) continue;
-
-    await client.insert(table).values(
-      children.map((child, j) => ({
-        ...parentRef,
-        ...childRowValues(child, parentValues.priceOn, child.sortOrder ?? j),
-        parentLineId: parent.id,
-        priceOn: null,
-      })),
+    await insertSubItems(
+      table,
+      parentRef,
+      line.children ?? [],
+      parent.id,
+      parentValues.priceOn,
+      client,
     );
+  }
+}
+
+async function insertSubItems(
+  table: LineTable,
+  parentRef: Record<string, string>,
+  items: SubItemInputDTO[],
+  parentLineId: string,
+  priceOn: "parent" | "children",
+  client: DbTransaction,
+) {
+  for (let j = 0; j < items.length; j++) {
+    const item = items[j];
+    const rowValues = subItemRowValues(item, priceOn, item.sortOrder ?? j);
+    const [inserted] = await client
+      .insert(table)
+      .values({
+        ...parentRef,
+        ...rowValues,
+        parentLineId,
+        priceOn: null,
+      })
+      .returning({ id: table.id });
+
+    if (!inserted) throw new Error("Failed to insert sub-item");
+
+    const nested = item.children ?? [];
+    if (nested.length > 0) {
+      await insertSubItems(
+        table,
+        parentRef,
+        nested,
+        inserted.id,
+        priceOn,
+        client,
+      );
+    }
   }
 }

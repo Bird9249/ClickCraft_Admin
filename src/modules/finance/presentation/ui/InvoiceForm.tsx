@@ -14,16 +14,36 @@ import type { CustomerDTO } from "@/modules/customers/domain/contracts";
 import { config } from "@/shared/lib/config";
 import { fetchLookupForInfinite, hydrateLookupItem } from "@/shared/lib/utils";
 import { LineItemsEditor } from "./LineItemsEditor";
+import { isRichTextEmpty } from "@/shared/lib/rich-text-html";
 
-const SubItemSchema = z.object({
-  description: z.string().min(1),
-  quantity: z.number().int().min(1).default(1),
-  unitPrice: z.number().int().min(0).default(0),
-  sortOrder: z.number().int().default(0),
-});
+const RichTextDescriptionSchema = z
+  .string()
+  .refine((val) => !isRichTextEmpty(val), { message: "ຕ້ອງໃສ່ລາຍການ" });
+
+const SubItemSchema: z.ZodType<{
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  sortOrder: number;
+  children: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    sortOrder: number;
+    children: [];
+  }>;
+}> = z.lazy(() =>
+  z.object({
+    description: RichTextDescriptionSchema,
+    quantity: z.number().int().min(1).default(1),
+    unitPrice: z.number().int().min(0).default(0),
+    sortOrder: z.number().int().default(0),
+    children: z.array(SubItemSchema).default([]),
+  }),
+);
 
 const LineSchema = z.object({
-  description: z.string().min(1),
+  description: RichTextDescriptionSchema,
   quantity: z.number().int().min(1).default(1),
   unitPrice: z.number().int().min(0).default(0),
   sortOrder: z.number().int().default(0),

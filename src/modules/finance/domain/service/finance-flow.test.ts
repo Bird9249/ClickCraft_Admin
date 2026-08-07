@@ -293,12 +293,14 @@ describe("finance sub-items (integration)", () => {
           quantity: 1,
           unitPrice: 0,
           sortOrder: 0,
+          children: [],
         },
         {
           description: "Frontend Dev",
           quantity: 1,
           unitPrice: 0,
           sortOrder: 1,
+          children: [],
         },
       ]);
       expect(saved?.lines[1]?.children).toEqual([]);
@@ -391,12 +393,14 @@ describe("finance sub-items (integration)", () => {
           quantity: 1,
           unitPrice: 0,
           sortOrder: 0,
+          children: [],
         },
         {
           description: "Frontend Dev",
           quantity: 1,
           unitPrice: 0,
           sortOrder: 1,
+          children: [],
         },
       ]);
       expect(inv1?.lines[1]).toMatchObject({
@@ -430,12 +434,14 @@ describe("finance sub-items (integration)", () => {
           quantity: 1,
           unitPrice: 0,
           sortOrder: 0,
+          children: [],
         },
         {
           description: "Frontend Dev",
           quantity: 1,
           unitPrice: 0,
           sortOrder: 1,
+          children: [],
         },
       ]);
       expect(dup?.total).toBe(12_000_000);
@@ -507,6 +513,71 @@ describe("finance sub-items (integration)", () => {
       expect(inv?.lines[0]?.children[0]?.unitPrice).toBe(8_000_000);
       expect(inv?.lines[0]?.children[1]?.unitPrice).toBe(10_000_000);
       expect(inv?.total).toBe(18_000_000);
+    });
+  });
+
+  it("persists two-level nested sub-items", async () => {
+    await db.transaction(async (tx) => {
+      const { created: customer } = await createCustomerService(tx, {
+        input: {
+          type: "company",
+          name: "Nested Sub-item Co.",
+          email: "nested@test.clickcraft.local",
+          notes: TEST_MARKER,
+        },
+      });
+
+      const { created: qt } = await createQuotationService(tx, {
+        input: {
+          customerId: customer.id,
+          issueDate: new Date(),
+          currency: "LAK",
+          notes: TEST_MARKER,
+          lines: [
+            {
+              description: "Hotel PMS",
+              quantity: 1,
+              unitPrice: 10_000_000,
+              sortOrder: 0,
+              priceOn: "parent",
+              children: [
+                {
+                  description: "Front desk module",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 0,
+                  children: [
+                    {
+                      description: "Booking calendar",
+                      quantity: 1,
+                      unitPrice: 0,
+                      sortOrder: 0,
+                      children: [],
+                    },
+                    {
+                      description: "Guest profile",
+                      quantity: 1,
+                      unitPrice: 0,
+                      sortOrder: 1,
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      const saved = await getQuotationById(qt.id, tx);
+      expect(saved?.lines[0]?.children[0]?.children).toHaveLength(2);
+
+      const flatLines = await tx
+        .select()
+        .from(schema.quotationLine)
+        .where(eq(schema.quotationLine.quotationId, qt.id));
+
+      expect(flatLines).toHaveLength(4);
     });
   });
 });

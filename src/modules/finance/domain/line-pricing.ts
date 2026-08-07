@@ -1,6 +1,9 @@
-import type { LineInputDTO } from "./contracts";
+import type { LineInputDTO, SubItemInputDTO } from "./contracts";
 
 export type PriceOn = "parent" | "children";
+
+/** Max nesting under a top-level line (level 1 + level 2 sub-items). */
+export const MAX_SUB_ITEM_DEPTH = 2;
 
 export function resolvePriceOn(
   parentAmount: number,
@@ -13,16 +16,26 @@ export function resolvePriceOn(
   return parentAmount > 0 || childrenTotal === 0 ? "parent" : "children";
 }
 
+function sumLeafAmounts(items: SubItemInputDTO[], priceOn: PriceOn): number {
+  let sum = 0;
+  for (const item of items) {
+    const nested = item.children ?? [];
+    if (priceOn === "children" && nested.length === 0) {
+      sum += item.quantity * item.unitPrice;
+    } else if (nested.length > 0) {
+      sum += sumLeafAmounts(nested, priceOn);
+    }
+  }
+  return sum;
+}
+
 export function lineGroupAmount(line: LineInputDTO): number {
   const children = line.children ?? [];
   if (children.length === 0) {
     return line.quantity * line.unitPrice;
   }
   if (line.priceOn === "children") {
-    return children.reduce(
-      (sum, child) => sum + child.quantity * child.unitPrice,
-      0,
-    );
+    return sumLeafAmounts(children, "children");
   }
   return line.quantity * line.unitPrice;
 }
@@ -49,29 +62,53 @@ export function parentRowValues(line: LineInputDTO) {
   };
 }
 
-export function childRowValues(
-  child: LineInputDTO["children"][number],
+export function subItemRowValues(
+  item: SubItemInputDTO,
   priceOn: PriceOn,
   sortOrder: number,
 ) {
-  if (priceOn === "children") {
-    const amount = child.quantity * child.unitPrice;
+  const hasChildren = (item.children?.length ?? 0) > 0;
+
+  if (priceOn === "children" && !hasChildren) {
+    const amount = item.quantity * item.unitPrice;
     return {
-      description: child.description,
-      quantity: child.quantity,
-      unitPrice: child.unitPrice,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
       amount,
       sortOrder,
     };
   }
 
   return {
-    description: child.description,
+    description: item.description,
     quantity: 1,
     unitPrice: 0,
     amount: 0,
     sortOrder,
   };
+}
+
+function scaleSubItems(
+  items: SubItemInputDTO[],
+  factor: number,
+): SubItemInputDTO[] {
+  return items.map((item) => {
+    const nested = item.children ?? [];
+    if (nested.length > 0) {
+      return {
+        ...item,
+        quantity: 1,
+        unitPrice: 0,
+        children: scaleSubItems(nested, factor),
+      };
+    }
+    return {
+      ...item,
+      unitPrice: Math.round(item.unitPrice * factor),
+      children: [],
+    };
+  });
 }
 
 export function scaleLineForMilestone(
@@ -84,10 +121,7 @@ export function scaleLineForMilestone(
       ...line,
       quantity: line.quantity,
       unitPrice: 0,
-      children: (line.children ?? []).map((child) => ({
-        ...child,
-        unitPrice: Math.round(child.unitPrice * factor),
-      })),
+      children: scaleSubItems(line.children ?? [], factor),
     };
   }
 
@@ -96,4 +130,16 @@ export function scaleLineForMilestone(
     unitPrice: Math.round(line.unitPrice * factor),
     children: line.children ?? [],
   };
+}
+
+export function subItemDepth(items: SubItemInputDTO[], depth = 1): number {
+  if (items.length === 0) return 0;
+  let max = depth;
+  for (const item of items) {
+    const nested = item.children ?? [];
+    if (nested.length > 0) {
+      max = Math.max(max, subItemDepth(nested, depth + 1));
+    }
+  }
+  return max;
 }

@@ -25,6 +25,16 @@ import { logger } from "@/server/platform/observability/logger";
 
 const DEMO_SEED_MARKER = "DEMO_SEED_P0_FINANCE";
 
+/** TipTap-style HTML snippets for rich-text line descriptions. */
+const rich = {
+  p: (text: string) => `<p>${text}</p>`,
+  bold: (text: string) => `<p><strong>${text}</strong></p>`,
+  bullet: (items: string[]) =>
+    `<ul>${items.map((item) => `<li><p>${item}</p></li>`).join("")}</ul>`,
+  combo: (title: string, detail: string) =>
+    `<p><strong>${title}</strong></p><p>${detail}</p>`,
+};
+
 async function clearPreviousDemo() {
   const demoCustomers = await db
     .select({ id: schema.customer.id })
@@ -120,44 +130,66 @@ async function seedFinanceDemo() {
           internalNotes: DEMO_SEED_MARKER,
           lines: [
             {
-              description: "Dealer ERP — Phase 1 setup",
+              description: rich.combo(
+                "Dealer ERP — Phase 1 setup",
+                "Modular ERP for inventory, sales, and customer service.",
+              ),
               quantity: 1,
               unitPrice: 0,
               sortOrder: 0,
               priceOn: "children",
               children: [
                 {
-                  description: "Inventory & parts catalog",
+                  description: rich.combo(
+                    "Inventory & parts catalog",
+                    "SKU tracking, stock alerts, and supplier imports.",
+                  ),
                   quantity: 1,
                   unitPrice: 8_000_000,
                   sortOrder: 0,
+                  children: [],
                 },
                 {
-                  description: "Sales & invoicing module",
+                  description: rich.combo(
+                    "Sales & invoicing module",
+                    "Quotations, invoices, and payment reconciliation.",
+                  ),
                   quantity: 1,
                   unitPrice: 7_000_000,
                   sortOrder: 1,
+                  children: [],
                 },
                 {
-                  description: "Customer & service history",
+                  description: rich.bullet([
+                    "Customer profiles",
+                    "Service history & reminders",
+                    "Warranty tracking",
+                  ]),
                   quantity: 1,
                   unitPrice: 3_000_000,
                   sortOrder: 2,
+                  children: [],
                 },
               ],
             },
             {
-              description: "Staff training (2 days)",
+              description: rich.combo(
+                "Staff training (2 days)",
+                "Onsite workshop at dealership showroom.",
+              ),
               quantity: 1,
               unitPrice: 2_000_000,
               sortOrder: 1,
               priceOn: "parent",
               children: [
                 {
-                  description: "Admin & sales staff hands-on workshop",
+                  description: rich.p(
+                    "Admin & sales staff hands-on workshop — user accounts, sales flow, and reporting.",
+                  ),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 0,
+                  children: [],
                 },
               ],
             },
@@ -177,71 +209,121 @@ async function seedFinanceDemo() {
           internalNotes: DEMO_SEED_MARKER,
           lines: [
             {
-              description: "Hotel PMS Phase 1 — core platform",
+              description: rich.combo(
+                "Hotel PMS Phase 1 — core platform",
+                "Front desk, reservations, and guest lifecycle in one system.",
+              ),
               quantity: 1,
               unitPrice: 25_000_000,
               sortOrder: 0,
               priceOn: "parent",
               children: [
                 {
-                  description: "Front desk & reservation module",
+                  description: rich.bold("Front desk & reservation module"),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 0,
+                  children: [
+                    {
+                      description: rich.p(
+                        "Booking calendar view — daily, weekly, and monthly occupancy.",
+                      ),
+                      quantity: 1,
+                      unitPrice: 0,
+                      sortOrder: 0,
+                      children: [],
+                    },
+                    {
+                      description: rich.p(
+                        "Guest check-in workflow — ID capture, room assignment, and folio.",
+                      ),
+                      quantity: 1,
+                      unitPrice: 0,
+                      sortOrder: 1,
+                      children: [],
+                    },
+                  ],
                 },
                 {
-                  description: "Room inventory & rate management",
+                  description: rich.bullet([
+                    "Dynamic rate plans",
+                    "Room type inventory",
+                    "Channel manager hooks",
+                  ]),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 1,
+                  children: [],
                 },
                 {
-                  description: "Guest check-in / check-out workflow",
+                  description: rich.p(
+                    "Express check-in / check-out for returning guests.",
+                  ),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 2,
+                  children: [],
                 },
               ],
             },
             {
-              description: "Housekeeping module",
+              description: rich.combo(
+                "Housekeeping module",
+                "Real-time room status and task dispatch.",
+              ),
               quantity: 1,
               unitPrice: 8_000_000,
               sortOrder: 1,
               priceOn: "parent",
               children: [
                 {
-                  description: "Room status board",
+                  description: rich.p(
+                    "Room status board — clean, dirty, inspected, out-of-order.",
+                  ),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 0,
+                  children: [],
                 },
                 {
-                  description: "Task assignment for housekeeping staff",
+                  description: rich.p(
+                    "Task assignment for housekeeping staff with mobile checklist.",
+                  ),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 1,
+                  children: [],
                 },
               ],
             },
             {
-              description: "Onsite training & go-live support",
+              description: rich.combo(
+                "Onsite training & go-live support",
+                "Knowledge transfer and launch assistance.",
+              ),
               quantity: 1,
               unitPrice: 5_000_000,
               sortOrder: 2,
               priceOn: "parent",
               children: [
                 {
-                  description: "2-day onsite training for front desk team",
+                  description: rich.bullet([
+                    "2-day onsite training for front desk team",
+                    "Role-based exercises and Q&A",
+                  ]),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 0,
+                  children: [],
                 },
                 {
-                  description: "Go-live support (5 business days)",
+                  description: rich.p(
+                    "Go-live support for <strong>5 business days</strong> after launch.",
+                  ),
                   quantity: 1,
                   unitPrice: 0,
                   sortOrder: 1,
+                  children: [],
                 },
               ],
             },

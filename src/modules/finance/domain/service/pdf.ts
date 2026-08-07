@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { normalizePaymentSchedule } from "../payment-schedule";
 import { linesToPdfRows } from "../line-tree";
+import { formatDescriptionForPdf } from "@/shared/lib/rich-text-html";
 // Bundled beside out/server/main.js on `bun run compile` (production PDF print)
 import logoFile from "../../../../assets/brand/logo-clickcraft-transparant.webp" with {
   type: "file",
@@ -102,6 +103,10 @@ function escapeHtml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function formatDescription(value: string): string {
+  return formatDescriptionForPdf(value);
 }
 
 function toDate(value: Date | string): Date {
@@ -229,6 +234,15 @@ function sharedStyles(): string {
   thead th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
   thead th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
   .cell { padding: 12px 14px; border-bottom: 1px solid var(--brand-border); vertical-align: top; }
+  .pdf-rich-text p { margin: 0.15rem 0; }
+  .pdf-rich-text ul, .pdf-rich-text ol { margin: 0.15rem 0; padding-left: 1.1rem; list-style-position: outside; }
+  .pdf-rich-text ul { list-style-type: disc; }
+  .pdf-rich-text ol { list-style-type: decimal; }
+  .pdf-rich-text li { display: list-item; }
+  .pdf-rich-text li p { margin: 0; }
+  .pdf-rich-text strong, .pdf-rich-text b { font-weight: 700; }
+  .pdf-rich-text em, .pdf-rich-text i { font-style: italic; }
+  .pdf-rich-text a { color: inherit; text-decoration: underline; }
   .center { text-align: center; }
   .right { text-align: right; }
   .summary {
@@ -317,11 +331,12 @@ function renderLineRows(lines: PdfLine[], currency: string, showQty: boolean): s
           ? `<td class="cell"></td>`
           : "";
 
+      const depth = line.depth ?? 0;
       const descStyle = line.isSubItem
-        ? ' style="padding-left:24px;color:var(--brand-gray);font-size:12px;"'
+        ? ` style="padding-left:${depth * 24}px;color:var(--brand-gray);font-size:12px;white-space:pre-wrap;"`
         : line.isGroup
-          ? ' style="font-weight:700;"'
-          : "";
+          ? ' style="font-weight:700;white-space:pre-wrap;"'
+          : ' style="white-space:pre-wrap;"';
 
       const numCell =
         line.isSubItem && line.showSubItemPrice
@@ -342,7 +357,7 @@ function renderLineRows(lines: PdfLine[], currency: string, showQty: boolean): s
       return `
         <tr${line.isGroup ? ' class="group-row"' : ""}>
           ${numCell}
-          <td class="cell"${descStyle}>${escapeHtml(line.description)}</td>
+          <td class="cell"${descStyle}><div class="pdf-rich-text">${formatDescription(line.description)}</div></td>
           ${qtyCell}
           ${priceCell}
         </tr>`;

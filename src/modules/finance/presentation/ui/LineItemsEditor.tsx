@@ -2,13 +2,18 @@ import { CornerDownRightIcon, PlusIcon, TrashIcon } from "lucide-react";
 import type { Control } from "react-hook-form";
 import { Controller, useFieldArray, useWatch } from "react-hook-form";
 import { Button } from "@/components/kit";
-import { lineGroupAmount } from "@/modules/finance/domain/line-pricing";
+import {
+  MAX_SUB_ITEM_DEPTH,
+  lineGroupAmount,
+} from "@/modules/finance/domain/line-pricing";
+import { LineDescriptionField } from "./LineDescriptionField";
 
 type SubItemField = {
   description: string;
   quantity: number;
   unitPrice: number;
   sortOrder: number;
+  children: SubItemField[];
 };
 
 type LineField = {
@@ -27,79 +32,144 @@ type Props = {
   currency?: string;
 };
 
-function SubItemsEditor({
+function emptySubItem(sortOrder: number): SubItemField {
+  return {
+    description: "",
+    quantity: 1,
+    unitPrice: 0,
+    sortOrder,
+    children: [],
+  };
+}
+
+function SubItemRow({
   name,
   control,
   priceOn,
+  depth,
+  onRemove,
 }: {
   name: string;
   control: Control<unknown>;
   priceOn: "parent" | "children";
+  depth: number;
+  onRemove: () => void;
 }) {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name,
-  });
+  const childrenPath = `${name}.children`;
+  const nested =
+    (useWatch({ control, name: childrenPath }) as SubItemField[] | undefined) ??
+    [];
+  const hasNested = nested.length > 0;
+  const showLeafPrice = priceOn === "children" && !hasNested;
+  const canNest = depth < MAX_SUB_ITEM_DEPTH;
+
+  const nestedArray = useFieldArray({ control, name: childrenPath });
 
   return (
-    <div className="ml-4 space-y-1 border-l-2 border-muted pl-3">
-      {fields.map((field, childIdx) => (
-        <div
-          key={field.id}
-          className={
-            priceOn === "children"
-              ? "grid grid-cols-[auto_1fr_72px_96px_32px] items-center gap-2"
-              : "flex items-center gap-2"
-          }
+    <div className="space-y-2">
+      <div
+        className={
+          showLeafPrice
+            ? "grid grid-cols-[auto_1fr_72px_96px_32px] items-start gap-2"
+            : "grid grid-cols-[auto_1fr_32px] items-start gap-2"
+        }
+      >
+        <CornerDownRightIcon className="mt-2.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <LineDescriptionField
+          name={`${name}.description`}
+          control={control}
+          placeholder="ລາຍລະອຽດ sub-item"
+          compact
+        />
+        {showLeafPrice ? (
+          <>
+            <input
+              type="number"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
+              {...control.register(`${name}.quantity`, {
+                valueAsNumber: true,
+              })}
+            />
+            <input
+              type="number"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
+              {...control.register(`${name}.unitPrice`, {
+                valueAsNumber: true,
+              })}
+            />
+          </>
+        ) : null}
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 shrink-0"
+          onClick={onRemove}
         >
-          <CornerDownRightIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <input
-            className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-            placeholder="ລາຍລະອຽດ sub-item"
-            {...control.register(`${name}.${childIdx}.description`)}
-          />
-          {priceOn === "children" ? (
-            <>
-              <input
-                type="number"
-                className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
-                {...control.register(`${name}.${childIdx}.quantity`, {
-                  valueAsNumber: true,
-                })}
-              />
-              <input
-                type="number"
-                className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
-                {...control.register(`${name}.${childIdx}.unitPrice`, {
-                  valueAsNumber: true,
-                })}
-              />
-            </>
-          ) : null}
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
-            onClick={() => remove(childIdx)}
-          >
-            <TrashIcon className="h-3.5 w-3.5 text-destructive" />
-          </Button>
-        </div>
+          <TrashIcon className="h-3.5 w-3.5 text-destructive" />
+        </Button>
+      </div>
+
+      {hasNested ? (
+        <SubItemsEditor
+          name={childrenPath}
+          control={control}
+          priceOn={priceOn}
+          depth={depth + 1}
+        />
+      ) : null}
+
+      {canNest && !hasNested ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={() => nestedArray.append(emptySubItem(0))}
+        >
+          <PlusIcon className="mr-1 h-3 w-3" />
+          ເພີ່ມ sub-item ຊັ້ນຍ່ອຍ
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function SubItemsEditor({
+  name,
+  control,
+  priceOn,
+  depth,
+}: {
+  name: string;
+  control: Control<unknown>;
+  priceOn: "parent" | "children";
+  depth: number;
+}) {
+  const { fields, append, remove } = useFieldArray({ control, name });
+
+  return (
+    <div
+      className="space-y-2 border-l-2 border-muted pl-3"
+      style={{ marginLeft: depth > 1 ? 12 : 16 }}
+    >
+      {fields.map((field, childIdx) => (
+        <SubItemRow
+          key={field.id}
+          name={`${name}.${childIdx}`}
+          control={control}
+          priceOn={priceOn}
+          depth={depth}
+          onRemove={() => remove(childIdx)}
+        />
       ))}
+
       <Button
         type="button"
         variant="ghost"
         size="sm"
         className="h-7 text-xs"
-        onClick={() =>
-          append({
-            description: "",
-            quantity: 1,
-            unitPrice: 0,
-            sortOrder: fields.length,
-          })
-        }
+        onClick={() => append(emptySubItem(fields.length))}
       >
         <PlusIcon className="mr-1 h-3 w-3" />
         ເພີ່ມ sub-item
@@ -131,20 +201,21 @@ function ParentLineRow({
     [];
   const hasChildren = children.length > 0;
   const priceOnChildren = hasChildren && priceOn === "children";
+  const childrenArray = useFieldArray({ control, name: childrenPath });
 
   return (
     <div className="space-y-2 rounded-lg border bg-muted/10 p-3">
       <div
         className={
           priceOnChildren
-            ? "grid grid-cols-[1fr_40px] items-center gap-2"
-            : "grid grid-cols-[1fr_80px_120px_40px] items-center gap-2"
+            ? "grid grid-cols-[1fr_40px] items-start gap-2"
+            : "grid grid-cols-[1fr_80px_120px_40px] items-start gap-2"
         }
       >
-        <input
-          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+        <LineDescriptionField
+          name={`${linePath}.description`}
+          control={control}
           placeholder="ຄໍາອະທິບາຍ"
-          {...control.register(`${linePath}.description`)}
         />
         {!priceOnChildren ? (
           <>
@@ -208,15 +279,28 @@ function ParentLineRow({
           name={childrenPath}
           control={control}
           priceOn={priceOn}
+          depth={1}
         />
-      ) : null}
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={() => childrenArray.append(emptySubItem(0))}
+        >
+          <PlusIcon className="mr-1 h-3 w-3" />
+          ເພີ່ມ sub-item
+        </Button>
+      )}
     </div>
   );
 }
 
 export function LineItemsEditor({ name, control, currency = "LAK" }: Props) {
   const { fields, append, remove } = useFieldArray({ control, name });
-  const watchedLines = (useWatch({ control, name }) as LineField[] | undefined) ?? [];
+  const watchedLines =
+    (useWatch({ control, name }) as LineField[] | undefined) ?? [];
 
   const total = watchedLines.reduce((acc, line) => {
     return (
@@ -241,7 +325,7 @@ export function LineItemsEditor({ name, control, currency = "LAK" }: Props) {
         <span />
       </div>
 
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         {fields.map((field, idx) => (
           <ParentLineRow
             key={field.id}

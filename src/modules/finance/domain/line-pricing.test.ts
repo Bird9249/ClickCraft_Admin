@@ -89,4 +89,33 @@ describe("scaleLineForMilestone", () => {
     expect(scaled.unitPrice).toBe(0);
     expect(scaled.children[0]?.unitPrice).toBe(4_000_000);
   });
+
+  it("sums nested leaf prices when priceOn is children", () => {
+    expect(
+      lineGroupAmount({
+        description: "Modules",
+        quantity: 1,
+        unitPrice: 0,
+        sortOrder: 0,
+        priceOn: "children",
+        children: [
+          {
+            description: "Group A",
+            quantity: 1,
+            unitPrice: 0,
+            sortOrder: 0,
+            children: [
+              {
+                description: "Part 1",
+                quantity: 1,
+                unitPrice: 3_000_000,
+                sortOrder: 0,
+                children: [],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(3_000_000);
+  });
 });
