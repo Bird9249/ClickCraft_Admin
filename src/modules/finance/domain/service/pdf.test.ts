@@ -137,4 +137,38 @@ describe("finance PDF HTML", () => {
     expect(html).toContain("transfer");
     expect(html).toContain("Receipt");
   });
+
+  it("renders group lines with bold subtotal in PDF", () => {
+    const html = renderQuotationHtml({
+      number: "QT-202607003",
+      issueDate: new Date("2026-07-22"),
+      customerName: "Test Co",
+      currency: "LAK",
+      lines: [
+        {
+          description: "Web Development",
+          quantity: 1,
+          unitPrice: 10_000_000,
+          amount: 10_000_000,
+          isGroup: true,
+          depth: 0,
+        },
+        {
+          description: "UI Design",
+          quantity: 0,
+          unitPrice: 0,
+          amount: 0,
+          isSubItem: true,
+          depth: 1,
+        },
+      ],
+      subtotal: 10_000_000,
+      taxAmount: 0,
+      total: 10_000_000,
+    });
+
+    expect(html).toContain('class="group-row"');
+    expect(html).toContain("UI Design");
+    expect(html).toContain("<strong>10,000,000 LAK</strong>");
+  });
 });

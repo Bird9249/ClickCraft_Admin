@@ -36,6 +36,20 @@
       "when": 1784784600000,
       "tag": "0004_distribution_b2",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784785200000,
+      "tag": "0005_line_subitems",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784785800000,
+      "tag": "0006_line_price_on",
+      "breakpoints": true
     }
   ]
 }

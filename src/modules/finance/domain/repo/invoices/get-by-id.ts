@@ -1,6 +1,7 @@
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
 import { eq, sql } from "drizzle-orm";
+import { buildLineTree } from "../../line-tree";
 
 export async function getInvoiceById(id: string, client: DbTransaction) {
   const [inv] = await client
@@ -39,11 +40,24 @@ export async function getInvoiceById(id: string, client: DbTransaction) {
 
   if (!inv) return null;
 
-  const lines = await client
+  const flatLines = await client
     .select()
     .from(schema.invoiceLine)
     .where(eq(schema.invoiceLine.invoiceId, id))
     .orderBy(schema.invoiceLine.sortOrder);
+
+  const lines = buildLineTree(
+    flatLines.map((l) => ({
+      id: l.id,
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      amount: l.amount,
+      sortOrder: l.sortOrder,
+      parentLineId: l.parentLineId ?? null,
+      priceOn: l.priceOn ?? null,
+    })),
+  );
 
   return { ...inv, lines };
 }

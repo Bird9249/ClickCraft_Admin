@@ -1,6 +1,7 @@
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
 import { eq, sql } from "drizzle-orm";
+import { buildLineTree } from "../../line-tree";
 
 export async function getQuotationById(id: string, client: DbTransaction) {
   const [qt] = await client
@@ -38,11 +39,24 @@ export async function getQuotationById(id: string, client: DbTransaction) {
 
   if (!qt) return null;
 
-  const lines = await client
+  const flatLines = await client
     .select()
     .from(schema.quotationLine)
     .where(eq(schema.quotationLine.quotationId, id))
     .orderBy(schema.quotationLine.sortOrder);
+
+  const lines = buildLineTree(
+    flatLines.map((l) => ({
+      id: l.id,
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      amount: l.amount,
+      sortOrder: l.sortOrder,
+      parentLineId: l.parentLineId ?? null,
+      priceOn: l.priceOn ?? null,
+    })),
+  );
 
   return { ...qt, lines };
 }

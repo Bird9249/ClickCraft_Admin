@@ -8,11 +8,24 @@ export type IdParamDTO = z.infer<typeof IdParamSchema>;
 
 // ─── Lines ────────────────────────────────────────────────────────────────────
 
+export const PriceOnSchema = z.enum(["parent", "children"]).default("parent");
+export type PriceOnDTO = z.infer<typeof PriceOnSchema>;
+
+export const SubItemInputSchema = z.object({
+  description: z.string().min(1, "ຕ້ອງໃສ່ລາຍການ"),
+  quantity: z.number().int().min(1).default(1),
+  unitPrice: z.number().int().min(0).default(0),
+  sortOrder: z.number().int().min(0).default(0),
+});
+export type SubItemInputDTO = z.infer<typeof SubItemInputSchema>;
+
 export const LineInputSchema = z.object({
   description: z.string().min(1, "ຕ້ອງໃສ່ລາຍການ"),
   quantity: z.number().int().min(1).default(1),
   unitPrice: z.number().int().min(0).default(0),
   sortOrder: z.number().int().min(0).default(0),
+  priceOn: PriceOnSchema,
+  children: z.array(SubItemInputSchema).default([]),
 });
 export type LineInputDTO = z.infer<typeof LineInputSchema>;
 

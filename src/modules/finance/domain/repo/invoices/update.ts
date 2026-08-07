@@ -2,7 +2,8 @@ import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
 import { eq } from "drizzle-orm";
 import type { UpdateInvoiceDTO } from "../../contracts";
-import { computeTotals, lineAmount } from "../service-helpers";
+import { computeTotals } from "../service-helpers";
+import { insertInvoiceLines } from "../line-helpers";
 
 export async function updateInvoice(
   id: string,
@@ -32,16 +33,7 @@ export async function updateInvoice(
       .where(eq(schema.invoiceLine.invoiceId, id));
 
     if (input.lines.length > 0) {
-      await client.insert(schema.invoiceLine).values(
-        input.lines.map((l, i) => ({
-          invoiceId: id,
-          description: l.description,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice,
-          amount: lineAmount(l),
-          sortOrder: l.sortOrder ?? i,
-        })),
-      );
+      await insertInvoiceLines(id, input.lines, client);
     }
   }
 

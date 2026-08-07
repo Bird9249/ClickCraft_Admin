@@ -10,6 +10,7 @@ import { createPaymentService } from "@/modules/finance/domain/service/payments"
 import {
   acceptQuotationService,
   createQuotationService,
+  duplicateQuotationService,
   sendQuotationService,
   updateQuotationService,
 } from "@/modules/finance/domain/service/quotations";
@@ -216,8 +217,296 @@ describe("finance P0 happy path (integration)", () => {
         }),
       ).rejects.toThrow(/accepted/i);
 
-      // Force rollback of this nested write set by throwing after assertions
       // Data cleaned in afterAll via TEST_MARKER
+    });
+  });
+});
+
+describe("finance sub-items (integration)", () => {
+  beforeAll(async () => {
+    await cleanupTestData();
+  });
+
+  afterAll(async () => {
+    await cleanupTestData();
+  });
+
+  it("persists nested sub-items, scales group on milestone, and duplicates hierarchy", async () => {
+    await db.transaction(async (tx) => {
+      const { created: customer } = await createCustomerService(tx, {
+        input: {
+          type: "company",
+          name: "Sub-item Test Co.",
+          email: "sub-items@test.clickcraft.local",
+          notes: TEST_MARKER,
+        },
+      });
+
+      const { created: qt } = await createQuotationService(tx, {
+        input: {
+          customerId: customer.id,
+          issueDate: new Date(),
+          currency: "LAK",
+          notes: TEST_MARKER,
+          lines: [
+            {
+              description: "Web Development",
+              quantity: 1,
+              unitPrice: 10_000_000,
+              sortOrder: 0,
+              priceOn: "parent",
+              children: [
+                {
+                  description: "UI Design",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 0,
+                },
+                {
+                  description: "Frontend Dev",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 1,
+                },
+              ],
+            },
+            {
+              description: "Hosting (standalone)",
+              quantity: 1,
+              unitPrice: 2_000_000,
+              sortOrder: 1,
+              priceOn: "parent",
+              children: [],
+            },
+          ],
+        },
+      });
+
+      expect(qt.total).toBe(12_000_000);
+
+      const saved = await getQuotationById(qt.id, tx);
+      expect(saved?.lines).toHaveLength(2);
+      expect(saved?.lines[0]?.priceOn).toBe("parent");
+      expect(saved?.lines[0]?.children).toEqual([
+        {
+          description: "UI Design",
+          quantity: 1,
+          unitPrice: 0,
+          sortOrder: 0,
+        },
+        {
+          description: "Frontend Dev",
+          quantity: 1,
+          unitPrice: 0,
+          sortOrder: 1,
+        },
+      ]);
+      expect(saved?.lines[1]?.children).toEqual([]);
+
+      const flatLines = await tx
+        .select()
+        .from(schema.quotationLine)
+        .where(eq(schema.quotationLine.quotationId, qt.id));
+
+      expect(flatLines).toHaveLength(4);
+
+      const parent = flatLines.find((l) => l.description === "Web Development");
+      expect(parent?.parentLineId).toBeNull();
+      expect(parent?.amount).toBe(10_000_000);
+
+      const subItems = flatLines.filter((l) => l.parentLineId === parent?.id);
+      expect(subItems).toHaveLength(2);
+      expect(
+        subItems.every((l) => l.unitPrice === 0 && l.amount === 0),
+      ).toBe(true);
+
+      await updateQuotationService(tx, {
+        id: qt.id,
+        input: {
+          lines: [
+            {
+              description: "Web Development",
+              quantity: 1,
+              unitPrice: 10_000_000,
+              sortOrder: 0,
+              priceOn: "parent",
+              children: [
+                {
+                  description: "UI/UX Design",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 0,
+                },
+                {
+                  description: "Frontend Dev",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 1,
+                },
+              ],
+            },
+            {
+              description: "Hosting (standalone)",
+              quantity: 1,
+              unitPrice: 2_000_000,
+              sortOrder: 1,
+              priceOn: "parent",
+              children: [],
+            },
+          ],
+        },
+      });
+
+      const updated = await getQuotationById(qt.id, tx);
+      expect(updated?.lines[0]?.children[0]?.description).toBe("UI/UX Design");
+
+      await sendQuotationService(tx, { id: qt.id });
+      await acceptQuotationService(tx, { id: qt.id });
+
+      const { invoices } = await createInvoicesFromQuotationService(tx, {
+        input: {
+          quotationId: qt.id,
+          issueDate: new Date(),
+          milestones: [
+            { percent: 50, label: "M1", condition: "Deposit" },
+            { percent: 50, label: "M2", condition: "Delivery" },
+          ],
+        },
+      });
+
+      expect(invoices).toHaveLength(2);
+      expect(invoices[0]!.total).toBe(6_000_000);
+      expect(invoices[1]!.total).toBe(6_000_000);
+
+      const inv1 = await getInvoiceById(invoices[0]!.id, tx);
+      expect(inv1?.lines).toHaveLength(2);
+      expect(inv1?.lines[0]).toMatchObject({
+        description: "Web Development",
+        unitPrice: 5_000_000,
+        amount: 5_000_000,
+      });
+      expect(inv1?.lines[0]?.children).toEqual([
+        {
+          description: "UI/UX Design",
+          quantity: 1,
+          unitPrice: 0,
+          sortOrder: 0,
+        },
+        {
+          description: "Frontend Dev",
+          quantity: 1,
+          unitPrice: 0,
+          sortOrder: 1,
+        },
+      ]);
+      expect(inv1?.lines[1]).toMatchObject({
+        description: "Hosting (standalone)",
+        unitPrice: 1_000_000,
+        amount: 1_000_000,
+      });
+
+      const invFlatLines = await tx
+        .select()
+        .from(schema.invoiceLine)
+        .where(eq(schema.invoiceLine.invoiceId, invoices[0]!.id));
+
+      const invParent = invFlatLines.find(
+        (l) => l.description === "Web Development",
+      );
+      const invSubItems = invFlatLines.filter(
+        (l) => l.parentLineId === invParent?.id,
+      );
+      expect(invSubItems).toHaveLength(2);
+      expect(invSubItems.every((l) => l.unitPrice === 0)).toBe(true);
+
+      const { created: duplicate } = await duplicateQuotationService(tx, {
+        id: qt.id,
+      });
+
+      const dup = await getQuotationById(duplicate.id, tx);
+      expect(dup?.lines[0]?.children).toEqual([
+        {
+          description: "UI/UX Design",
+          quantity: 1,
+          unitPrice: 0,
+          sortOrder: 0,
+        },
+        {
+          description: "Frontend Dev",
+          quantity: 1,
+          unitPrice: 0,
+          sortOrder: 1,
+        },
+      ]);
+      expect(dup?.total).toBe(12_000_000);
+    });
+  });
+
+  it("persists child-priced groups and scales sub-item prices on milestone", async () => {
+    await db.transaction(async (tx) => {
+      const { created: customer } = await createCustomerService(tx, {
+        input: {
+          type: "company",
+          name: "Child Price Test Co.",
+          email: "child-price@test.clickcraft.local",
+          notes: TEST_MARKER,
+        },
+      });
+
+      const { created: qt } = await createQuotationService(tx, {
+        input: {
+          customerId: customer.id,
+          issueDate: new Date(),
+          currency: "LAK",
+          notes: TEST_MARKER,
+          lines: [
+            {
+              description: "Dealer ERP modules",
+              quantity: 1,
+              unitPrice: 0,
+              sortOrder: 0,
+              priceOn: "children",
+              children: [
+                {
+                  description: "Inventory module",
+                  quantity: 1,
+                  unitPrice: 8_000_000,
+                  sortOrder: 0,
+                },
+                {
+                  description: "Sales module",
+                  quantity: 1,
+                  unitPrice: 10_000_000,
+                  sortOrder: 1,
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(qt.total).toBe(18_000_000);
+
+      const saved = await getQuotationById(qt.id, tx);
+      expect(saved?.lines[0]?.priceOn).toBe("children");
+      expect(saved?.lines[0]?.unitPrice).toBe(0);
+
+      await sendQuotationService(tx, { id: qt.id });
+      await acceptQuotationService(tx, { id: qt.id });
+
+      const { invoices } = await createInvoicesFromQuotationService(tx, {
+        input: {
+          quotationId: qt.id,
+          issueDate: new Date(),
+          milestones: [{ percent: 100, label: "Full" }],
+        },
+      });
+
+      const inv = await getInvoiceById(invoices[0]!.id, tx);
+      expect(inv?.lines[0]?.priceOn).toBe("children");
+      expect(inv?.lines[0]?.children[0]?.unitPrice).toBe(8_000_000);
+      expect(inv?.lines[0]?.children[1]?.unitPrice).toBe(10_000_000);
+      expect(inv?.total).toBe(18_000_000);
     });
   });
 });

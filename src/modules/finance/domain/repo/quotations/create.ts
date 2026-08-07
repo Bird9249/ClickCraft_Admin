@@ -1,7 +1,8 @@
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
 import type { CreateQuotationDTO } from "../../contracts";
-import { computeTotals, lineAmount } from "../service-helpers";
+import { computeTotals } from "../service-helpers";
+import { insertQuotationLines } from "../line-helpers";
 
 export async function createQuotation(
   input: CreateQuotationDTO & { number: string; createdBy?: string | null },
@@ -34,16 +35,7 @@ export async function createQuotation(
   if (!qt) throw new Error("Failed to create quotation");
 
   if (input.lines.length > 0) {
-    await client.insert(schema.quotationLine).values(
-      input.lines.map((l, i) => ({
-        quotationId: qt.id,
-        description: l.description,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        amount: lineAmount(l),
-        sortOrder: l.sortOrder ?? i,
-      })),
-    );
+    await insertQuotationLines(qt.id, input.lines, client);
   }
 
   return qt;

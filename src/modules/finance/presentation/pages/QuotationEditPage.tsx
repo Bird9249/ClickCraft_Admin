@@ -16,6 +16,7 @@ import {
   useUpdateQuotation,
 } from "../api/queries";
 import { CreateInvoicesDialog } from "../ui/CreateInvoicesDialog";
+import { mapApiLinesToForm, mapFormLinesToApi } from "../lib/line-form";
 import { QuotationForm } from "../ui/QuotationForm";
 
 export function QuotationEditPage() {
@@ -158,12 +159,7 @@ export function QuotationEditPage() {
                   internalNotes: data.internalNotes ?? "",
                   showSignature: data.showSignature ?? true,
                   paymentSchedule: normalizePaymentSchedule(data.paymentSchedule),
-                  lines: (data.lines ?? []).map((l) => ({
-                    description: l.description,
-                    quantity: l.quantity,
-                    unitPrice: l.unitPrice,
-                    sortOrder: l.sortOrder,
-                  })),
+                  lines: mapApiLinesToForm(data.lines ?? []),
                 }}
                 onSubmit={async (vals) => {
                   try {
@@ -186,12 +182,7 @@ export function QuotationEditPage() {
                       internalNotes: vals.internalNotes || null,
                       showSignature: vals.showSignature,
                       paymentSchedule: vals.paymentSchedule,
-                      lines: vals.lines.map((l, i) => ({
-                        description: l.description,
-                        quantity: l.quantity,
-                        unitPrice: l.unitPrice,
-                        sortOrder: i,
-                      })),
+                      lines: mapFormLinesToApi(vals.lines),
                     });
                     toast.success("Saved");
                   } catch {

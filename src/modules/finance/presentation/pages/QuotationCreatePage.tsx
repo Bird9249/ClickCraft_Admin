@@ -4,6 +4,7 @@ import { Header } from "@/app/layout/Header";
 import { Main } from "@/app/layout/Main";
 import { Button, toast } from "@/components/kit";
 import { useCreateQuotation } from "../api/queries";
+import { mapFormLinesToApi } from "../lib/line-form";
 import { QuotationForm } from "../ui/QuotationForm";
 
 export function QuotationCreatePage() {
@@ -46,12 +47,7 @@ export function QuotationCreatePage() {
                   internalNotes: vals.internalNotes || null,
                   showSignature: vals.showSignature,
                   paymentSchedule: vals.paymentSchedule,
-                  lines: vals.lines.map((l, i) => ({
-                    description: l.description,
-                    quantity: l.quantity,
-                    unitPrice: l.unitPrice,
-                    sortOrder: i,
-                  })),
+                  lines: mapFormLinesToApi(vals.lines),
                 });
                 toast.success("ສ້າງໃບສະເໜີລາຄາສໍາເລັດ");
                 nav({ to: "/app/quotations" });

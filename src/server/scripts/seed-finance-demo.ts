@@ -122,14 +122,44 @@ async function seedFinanceDemo() {
             {
               description: "Dealer ERP — Phase 1 setup",
               quantity: 1,
-              unitPrice: 18_000_000,
+              unitPrice: 0,
               sortOrder: 0,
+              priceOn: "children",
+              children: [
+                {
+                  description: "Inventory & parts catalog",
+                  quantity: 1,
+                  unitPrice: 8_000_000,
+                  sortOrder: 0,
+                },
+                {
+                  description: "Sales & invoicing module",
+                  quantity: 1,
+                  unitPrice: 7_000_000,
+                  sortOrder: 1,
+                },
+                {
+                  description: "Customer & service history",
+                  quantity: 1,
+                  unitPrice: 3_000_000,
+                  sortOrder: 2,
+                },
+              ],
             },
             {
               description: "Staff training (2 days)",
               quantity: 1,
               unitPrice: 2_000_000,
               sortOrder: 1,
+              priceOn: "parent",
+              children: [
+                {
+                  description: "Admin & sales staff hands-on workshop",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 0,
+                },
+              ],
             },
           ],
         },
@@ -142,26 +172,78 @@ async function seedFinanceDemo() {
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           currency: "LAK",
           taxNote: "VAT 0%",
-          notes: "Hotel Management System — Phase 1 quotation (demo)",
+          notes:
+            "Hotel Management System — Phase 1 quotation (demo with sub-items)",
           internalNotes: DEMO_SEED_MARKER,
           lines: [
             {
-              description: "Hotel PMS Phase 1 — core booking & front desk",
+              description: "Hotel PMS Phase 1 — core platform",
               quantity: 1,
               unitPrice: 25_000_000,
               sortOrder: 0,
+              priceOn: "parent",
+              children: [
+                {
+                  description: "Front desk & reservation module",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 0,
+                },
+                {
+                  description: "Room inventory & rate management",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 1,
+                },
+                {
+                  description: "Guest check-in / check-out workflow",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 2,
+                },
+              ],
             },
             {
               description: "Housekeeping module",
               quantity: 1,
               unitPrice: 8_000_000,
               sortOrder: 1,
+              priceOn: "parent",
+              children: [
+                {
+                  description: "Room status board",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 0,
+                },
+                {
+                  description: "Task assignment for housekeeping staff",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 1,
+                },
+              ],
             },
             {
               description: "Onsite training & go-live support",
               quantity: 1,
               unitPrice: 5_000_000,
               sortOrder: 2,
+              priceOn: "parent",
+              children: [
+                {
+                  description: "2-day onsite training for front desk team",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 0,
+                },
+                {
+                  description: "Go-live support (5 business days)",
+                  quantity: 1,
+                  unitPrice: 0,
+                  sortOrder: 1,
+                },
+              ],
             },
           ],
         },

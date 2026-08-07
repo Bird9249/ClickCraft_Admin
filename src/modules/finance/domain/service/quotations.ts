@@ -1,5 +1,6 @@
 import type { DbTransaction } from "@/shared/types";
 import type { CreateQuotationDTO, UpdateQuotationDTO } from "../contracts";
+import { toLineInputs } from "../line-tree";
 import { createQuotation } from "../repo/quotations/create";
 import { getQuotationById } from "../repo/quotations/get-by-id";
 import { updateQuotation } from "../repo/quotations/update";
@@ -123,12 +124,7 @@ export async function duplicateQuotationService(
       notes: qt.notes ?? null,
       internalNotes: qt.internalNotes ?? null,
       createdBy: params.actorId ?? null,
-      lines: qt.lines.map((l) => ({
-        description: l.description,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        sortOrder: l.sortOrder,
-      })),
+      lines: toLineInputs(qt.lines),
     },
     client,
   );

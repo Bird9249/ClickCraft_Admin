@@ -20,11 +20,20 @@ import {
 import { LineItemsEditor } from "./LineItemsEditor";
 import { PaymentScheduleEditor } from "./PaymentScheduleEditor";
 
+const SubItemSchema = z.object({
+  description: z.string().min(1),
+  quantity: z.number().int().min(1).default(1),
+  unitPrice: z.number().int().min(0).default(0),
+  sortOrder: z.number().int().default(0),
+});
+
 const LineSchema = z.object({
   description: z.string().min(1),
   quantity: z.number().int().min(1).default(1),
   unitPrice: z.number().int().min(0).default(0),
   sortOrder: z.number().int().default(0),
+  priceOn: z.enum(["parent", "children"]).default("parent"),
+  children: z.array(SubItemSchema).default([]),
 });
 
 const PaymentScheduleSchema = z.object({
@@ -82,7 +91,16 @@ export function QuotationForm({
       internalNotes: "",
       showSignature: true,
       paymentSchedule: DEFAULT_PAYMENT_SCHEDULE.map((item) => ({ ...item })),
-      lines: [{ description: "", quantity: 1, unitPrice: 0, sortOrder: 0 }],
+      lines: [
+        {
+          description: "",
+          quantity: 1,
+          unitPrice: 0,
+          sortOrder: 0,
+          priceOn: "parent",
+          children: [],
+        },
+      ],
       ...initialValues,
     },
   });

@@ -4,6 +4,7 @@ import { Header } from "@/app/layout/Header";
 import { Main } from "@/app/layout/Main";
 import { Button, toast } from "@/components/kit";
 import { useCreateInvoice } from "../api/queries";
+import { mapFormLinesToApi } from "../lib/line-form";
 import { InvoiceForm } from "../ui/InvoiceForm";
 
 export function InvoiceCreatePage() {
@@ -43,12 +44,7 @@ export function InvoiceCreatePage() {
                   taxNote: vals.taxNote || null,
                   notes: vals.notes || null,
                   showSignature: vals.showSignature,
-                  lines: vals.lines.map((l, i) => ({
-                    description: l.description,
-                    quantity: l.quantity,
-                    unitPrice: l.unitPrice,
-                    sortOrder: i,
-                  })),
+                  lines: mapFormLinesToApi(vals.lines),
                 });
                 toast.success("ສ້າງໃບເກັບເງິນສໍາເລັດ");
                 nav({ to: "/app/invoices" });

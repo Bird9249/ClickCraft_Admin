@@ -7,6 +7,7 @@ import {
   text,
   timestamp,
   unique,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
 import { user } from "./auth";
@@ -93,9 +94,19 @@ export const quotationLine = pgTable(
     quantity: integer("quantity").notNull().default(1),
     unitPrice: integer("unit_price").notNull().default(0),
     amount: integer("amount").notNull().default(0),
+    /** When set, this row is a description-only sub-item of the parent line. */
+    parentLineId: text("parent_line_id").references(
+      (): AnyPgColumn => quotationLine.id,
+      { onDelete: "cascade" },
+    ),
+    /** Where pricing lives for grouped lines: parent | children */
+    priceOn: text("price_on").default("parent"),
     meta: jsonb("meta"),
   },
-  (t) => [index("quotation_line_by_quotation").on(t.quotationId)],
+  (t) => [
+    index("quotation_line_by_quotation").on(t.quotationId),
+    index("quotation_line_by_parent").on(t.parentLineId),
+  ],
 );
 
 export const invoice = pgTable(
@@ -167,9 +178,19 @@ export const invoiceLine = pgTable(
     quantity: integer("quantity").notNull().default(1),
     unitPrice: integer("unit_price").notNull().default(0),
     amount: integer("amount").notNull().default(0),
+    /** When set, this row is a description-only sub-item of the parent line. */
+    parentLineId: text("parent_line_id").references(
+      (): AnyPgColumn => invoiceLine.id,
+      { onDelete: "cascade" },
+    ),
+    /** Where pricing lives for grouped lines: parent | children */
+    priceOn: text("price_on").default("parent"),
     meta: jsonb("meta"),
   },
-  (t) => [index("invoice_line_by_invoice").on(t.invoiceId)],
+  (t) => [
+    index("invoice_line_by_invoice").on(t.invoiceId),
+    index("invoice_line_by_parent").on(t.parentLineId),
+  ],
 );
 
 export const payment = pgTable(

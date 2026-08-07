@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { normalizePaymentSchedule } from "../payment-schedule";
+import { linesToPdfRows } from "../line-tree";
 // Bundled beside out/server/main.js on `bun run compile` (production PDF print)
 import logoFile from "../../../../assets/brand/logo-clickcraft-transparant.webp" with {
   type: "file",
@@ -47,6 +48,28 @@ export interface PdfLine {
   quantity: number;
   unitPrice: number;
   amount: number;
+  depth?: number;
+  isGroup?: boolean;
+  isSubItem?: boolean;
+  showSubItemPrice?: boolean;
+}
+
+export function toPdfLines(
+  lines: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    amount: number;
+    priceOn?: "parent" | "children";
+    children?: Array<{
+      description: string;
+      sortOrder: number;
+      quantity: number;
+      unitPrice: number;
+    }>;
+  }>,
+): PdfLine[] {
+  return linesToPdfRows(lines);
 }
 
 export interface PdfDocBase {
@@ -282,17 +305,46 @@ function sharedStyles(): string {
 }
 
 function renderLineRows(lines: PdfLine[], currency: string, showQty: boolean): string {
+  let rowNum = 0;
   return lines
-    .map((line, i) => {
-      const qtyCell = showQty
+    .map((line) => {
+      if (!line.isSubItem) rowNum++;
+
+      const showQtyCell = showQty && (!line.isSubItem || line.showSubItemPrice);
+      const qtyCell = showQtyCell
         ? `<td class="cell center muted">${line.quantity}</td>`
-        : "";
+        : showQty
+          ? `<td class="cell"></td>`
+          : "";
+
+      const descStyle = line.isSubItem
+        ? ' style="padding-left:24px;color:var(--brand-gray);font-size:12px;"'
+        : line.isGroup
+          ? ' style="font-weight:700;"'
+          : "";
+
+      const numCell =
+        line.isSubItem && line.showSubItemPrice
+          ? `<td class="cell"></td>`
+          : line.isSubItem
+            ? `<td class="cell"></td>`
+            : `<td class="cell center muted">${rowNum}</td>`;
+
+      const priceCell =
+        line.isSubItem && !line.showSubItemPrice
+          ? `<td class="cell"></td>`
+          : line.isGroup
+            ? `<td class="cell right mono"><strong>${formatMoney(line.amount, currency)}</strong></td>`
+            : line.isSubItem
+              ? `<td class="cell right mono">${formatMoney(line.amount, currency)}</td>`
+              : `<td class="cell right mono">${formatMoney(line.amount, currency)}</td>`;
+
       return `
-        <tr>
-          <td class="cell center muted">${i + 1}</td>
-          <td class="cell">${escapeHtml(line.description)}</td>
+        <tr${line.isGroup ? ' class="group-row"' : ""}>
+          ${numCell}
+          <td class="cell"${descStyle}>${escapeHtml(line.description)}</td>
           ${qtyCell}
-          <td class="cell right mono">${formatMoney(line.amount, currency)}</td>
+          ${priceCell}
         </tr>`;
     })
     .join("");
@@ -546,7 +598,9 @@ export function renderQuotationHtml(
     laoTitle: "ໃບສະເໜີລາຄາ",
     enTitle: "Quotation",
     doc,
-    showQty: doc.lines.some((l) => l.quantity !== 1),
+    showQty: doc.lines.some(
+      (l) => (!l.isSubItem || l.showSubItemPrice) && l.quantity !== 1,
+    ),
     metaRows: [
       { label: "ເລກທີເອກະສານ / Document No.", value: escapeHtml(doc.number), mono: true },
       { label: "ວັນທີອອກ / Issue Date", value: formatLaoDate(doc.issueDate) },
@@ -575,7 +629,9 @@ export function renderInvoiceHtml(
     enTitle: "Invoice",
     titleSuffix: doc.milestoneLabel ?? undefined,
     doc,
-    showQty: doc.lines.some((l) => l.quantity !== 1),
+    showQty: doc.lines.some(
+      (l) => (!l.isSubItem || l.showSubItemPrice) && l.quantity !== 1,
+    ),
     metaRows: [
       { label: "ເລກທີເອກະສານ / Document No.", value: escapeHtml(doc.number), mono: true },
       { label: "ວັນທີອອກ / Issue Date", value: formatLaoDate(doc.issueDate) },

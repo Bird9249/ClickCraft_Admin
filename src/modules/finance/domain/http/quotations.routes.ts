@@ -18,7 +18,7 @@ import {
   updateQuotationService,
   voidQuotationService,
 } from "../service/quotations";
-import { renderQuotationHtml } from "../service/pdf";
+import { renderQuotationHtml, toPdfLines } from "../service/pdf";
 
 export const quotationsRoutes = new Elysia()
   .use(serverContext)
@@ -57,12 +57,7 @@ export const quotationsRoutes = new Elysia()
         customerPhone: qt.customerPhone,
         customerEmail: qt.customerEmail,
         currency: qt.currency,
-        lines: qt.lines.map((l) => ({
-          description: l.description,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice,
-          amount: l.amount,
-        })),
+        lines: toPdfLines(qt.lines),
         subtotal: qt.subtotal,
         taxAmount: qt.taxAmount,
         total: qt.total,

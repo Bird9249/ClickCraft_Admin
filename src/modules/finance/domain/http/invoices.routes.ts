@@ -18,7 +18,7 @@ import {
   voidInvoiceService,
 } from "../service/invoices";
 import { loadBankQrDataUri } from "../service/bank-qr";
-import { renderInvoiceHtml } from "../service/pdf";
+import { renderInvoiceHtml, toPdfLines } from "../service/pdf";
 import { getFinanceSettings } from "../repo/settings/get";
 
 export const invoicesRoutes = new Elysia()
@@ -61,12 +61,7 @@ export const invoicesRoutes = new Elysia()
         customerPhone: inv.customerPhone,
         customerEmail: inv.customerEmail,
         currency: inv.currency,
-        lines: inv.lines.map((l) => ({
-          description: l.description,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice,
-          amount: l.amount,
-        })),
+        lines: toPdfLines(inv.lines),
         subtotal: inv.subtotal,
         taxAmount: inv.taxAmount,
         total: inv.total,

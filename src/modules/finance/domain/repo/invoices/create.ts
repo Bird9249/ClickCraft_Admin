@@ -1,7 +1,8 @@
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
 import type { CreateInvoiceDTO } from "../../contracts";
-import { computeTotals, lineAmount } from "../service-helpers";
+import { computeTotals } from "../service-helpers";
+import { insertInvoiceLines } from "../line-helpers";
 
 export async function createInvoice(
   input: CreateInvoiceDTO & {
@@ -38,16 +39,7 @@ export async function createInvoice(
   if (!inv) throw new Error("Failed to create invoice");
 
   if (input.lines.length > 0) {
-    await client.insert(schema.invoiceLine).values(
-      input.lines.map((l, i) => ({
-        invoiceId: inv.id,
-        description: l.description,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        amount: lineAmount(l),
-        sortOrder: l.sortOrder ?? i,
-      })),
-    );
+    await insertInvoiceLines(inv.id, input.lines, client);
   }
 
   return inv;

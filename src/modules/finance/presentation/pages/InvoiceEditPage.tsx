@@ -14,6 +14,7 @@ import {
   useUpdateInvoice,
 } from "../api/queries";
 import { InvoiceForm } from "../ui/InvoiceForm";
+import { mapApiLinesToForm, mapFormLinesToApi } from "../lib/line-form";
 
 export function InvoiceEditPage() {
   const nav = useNavigate({ from: "/app/invoices/$id/edit" });
@@ -146,12 +147,7 @@ export function InvoiceEditPage() {
                   taxNote: data.taxNote ?? "VAT 0%",
                   notes: data.notes ?? "",
                   showSignature: data.showSignature ?? true,
-                  lines: (data.lines ?? []).map((l) => ({
-                    description: l.description,
-                    quantity: l.quantity,
-                    unitPrice: l.unitPrice,
-                    sortOrder: l.sortOrder,
-                  })),
+                  lines: mapApiLinesToForm(data.lines ?? []),
                 }}
                 onSubmit={async (vals) => {
                   try {
@@ -171,12 +167,7 @@ export function InvoiceEditPage() {
                       taxNote: vals.taxNote || null,
                       notes: vals.notes || null,
                       showSignature: vals.showSignature,
-                      lines: vals.lines.map((l, i) => ({
-                        description: l.description,
-                        quantity: l.quantity,
-                        unitPrice: l.unitPrice,
-                        sortOrder: i,
-                      })),
+                      lines: mapFormLinesToApi(vals.lines),
                     });
                     toast.success("Saved");
                   } catch {

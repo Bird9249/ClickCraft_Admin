@@ -2,7 +2,8 @@ import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
 import { eq } from "drizzle-orm";
 import type { UpdateQuotationDTO } from "../../contracts";
-import { computeTotals, lineAmount } from "../service-helpers";
+import { computeTotals } from "../service-helpers";
+import { insertQuotationLines } from "../line-helpers";
 
 export async function updateQuotation(
   id: string,
@@ -34,16 +35,7 @@ export async function updateQuotation(
       .where(eq(schema.quotationLine.quotationId, id));
 
     if (input.lines.length > 0) {
-      await client.insert(schema.quotationLine).values(
-        input.lines.map((l, i) => ({
-          quotationId: id,
-          description: l.description,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice,
-          amount: lineAmount(l),
-          sortOrder: l.sortOrder ?? i,
-        })),
-      );
+      await insertQuotationLines(id, input.lines, client);
     }
   }
 
