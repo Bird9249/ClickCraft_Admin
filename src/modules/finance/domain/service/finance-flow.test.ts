@@ -39,6 +39,9 @@ async function cleanupTestData() {
         .where(eq(schema.receipt.invoiceId, inv.id));
 
       for (const rc of receipts) {
+        await db
+          .delete(schema.ledgerEntry)
+          .where(eq(schema.ledgerEntry.paymentId, rc.paymentId));
         await db.delete(schema.receipt).where(eq(schema.receipt.id, rc.id));
         await db
           .delete(schema.payment)

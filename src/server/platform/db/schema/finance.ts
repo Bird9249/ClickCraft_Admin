@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -7,6 +8,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
@@ -278,6 +280,8 @@ export const financeSettings = pgTable("finance_settings", {
   accountName: text("account_name"),
   accountNumber: text("account_number"),
   qrImageKey: text("qr_image_key"),
+  /** Auto-create income ledger entry when recording a payment */
+  autoLedgerOnPayment: boolean("auto_ledger_on_payment").notNull().default(false),
   updatedAt: timestamp("updated_at", {
     withTimezone: true,
     mode: "date",
@@ -285,3 +289,69 @@ export const financeSettings = pgTable("finance_settings", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+/** Cashbook ledger entry (income / expense) */
+export const ledgerEntry = pgTable(
+  "ledger_entry",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    /** income | expense */
+    type: text("type").notNull(),
+    entryDate: timestamp("entry_date", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    /** Category / item label e.g. ເງິນເດືອນ, ພັດທະນາ */
+    category: text("category").notNull(),
+    /** Always positive; sign derived from type */
+    amount: integer("amount").notNull(),
+    /** Related party e.g. customer name, team member, All */
+    relatedParty: text("related_party"),
+    /** customer | internal — income party source */
+    partyType: text("party_type"),
+    customerId: text("customer_id").references(() => customer.id, {
+      onDelete: "set null",
+    }),
+    notes: text("notes"),
+    /** manual | csv_import | payment */
+    sourceType: text("source_type").notNull().default("manual"),
+    paymentId: text("payment_id").references(() => payment.id, {
+      onDelete: "set null",
+    }),
+    invoiceId: text("invoice_id").references(() => invoice.id, {
+      onDelete: "set null",
+    }),
+    receiptId: text("receipt_id").references(() => receipt.id, {
+      onDelete: "set null",
+    }),
+    createdBy: text("created_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [
+    index("ledger_entry_by_type").on(t.type),
+    index("ledger_entry_by_entry_date").on(t.entryDate),
+    index("ledger_entry_by_category").on(t.category),
+    index("ledger_entry_by_related_party").on(t.relatedParty),
+    index("ledger_entry_by_customer").on(t.customerId),
+    index("ledger_entry_by_source_type").on(t.sourceType),
+    index("ledger_entry_by_payment").on(t.paymentId),
+    uniqueIndex("ledger_entry_payment_id_unique")
+      .on(t.paymentId)
+      .where(sql`${t.paymentId} is not null`),
+  ],
+);

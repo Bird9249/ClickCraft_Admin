@@ -7,6 +7,7 @@ import {
   Receipt,
   ScrollText,
   ShieldCheck,
+  Wallet,
   UserCog,
   Users,
 } from "lucide-react";
@@ -61,6 +62,12 @@ export const sidebarData: SidebarData = {
           title: "ໃບຮັບເງິນ",
           url: "/app/receipts",
           icon: Receipt,
+          requiredPermissions: ["finance:read"],
+        },
+        {
+          title: "ລາຍຮັບ-ລາຍຈ່າຍ",
+          url: "/app/ledger",
+          icon: Wallet,
           requiredPermissions: ["finance:read"],
         },
       ],

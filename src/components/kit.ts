@@ -19,6 +19,7 @@ export { DatePicker } from "@/components/date-picker";
 export {
   Field,
   FormActions,
+  FormAmountInput,
   FormAvatarUpload,
   FormCheckbox,
   FormDatePicker,
@@ -27,7 +28,12 @@ export {
   FormPassword,
   type FormPasswordProps,
   FormRoot,
+  FormSelect,
+  type FormSelectOption,
+  FormStaticCombobox,
   FormTextarea,
+  FormToggleGroup,
+  type FormToggleGroupOption,
   useFieldError,
 } from "@/components/form";
 export { default as Loader } from "@/components/loader";

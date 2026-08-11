@@ -3,6 +3,7 @@ import type { DbTransaction } from "@/shared/types";
 import { eq } from "drizzle-orm";
 import type { CreatePaymentDTO } from "../../contracts";
 import { nextDocNumber } from "../../service/sequence";
+import { createLedgerFromPaymentIfEnabled } from "../../service/ledger-from-payment";
 
 export async function createPaymentWithReceipt(
   input: CreatePaymentDTO & { createdBy?: string | null },
@@ -65,5 +66,12 @@ export async function createPaymentWithReceipt(
     .set({ amountPaid: newAmountPaid, status: newStatus, updatedAt: new Date() })
     .where(eq(schema.invoice.id, input.invoiceId));
 
-  return { payment: pmt, receipt: rc! };
+  const ledgerEntry = await createLedgerFromPaymentIfEnabled(client, {
+    payment: pmt,
+    receipt: rc!,
+    invoice: inv,
+    actorId: input.createdBy ?? null,
+  });
+
+  return { payment: pmt, receipt: rc!, ledgerEntry };
 }

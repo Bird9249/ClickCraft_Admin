@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -9,6 +7,7 @@ import {
   CardTitle,
   Input,
   Label,
+  Switch,
   toast,
 } from "@/components/kit";
 import {
@@ -16,6 +15,8 @@ import {
   type FinanceSettingsDTO,
 } from "@/modules/finance/presentation/api/client";
 import { ImageKeyUploadField } from "@/shared/ui/ImageKeyUploadField";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 export function BankPaymentSection() {
   const qc = useQueryClient();
@@ -28,6 +29,7 @@ export function BankPaymentSection() {
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [qrImageKey, setQrImageKey] = useState("");
+  const [autoLedgerOnPayment, setAutoLedgerOnPayment] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export function BankPaymentSection() {
     setAccountName(data.accountName ?? "");
     setAccountNumber(data.accountNumber ?? "");
     setQrImageKey(data.qrImageKey ?? "");
+    setAutoLedgerOnPayment(data.autoLedgerOnPayment ?? false);
   }, [data]);
 
   const onSave = async () => {
@@ -46,6 +49,7 @@ export function BankPaymentSection() {
         accountName: accountName.trim() || null,
         accountNumber: accountNumber.trim() || null,
         qrImageKey: qrImageKey.trim() || null,
+        autoLedgerOnPayment,
       });
       qc.setQueryData(["finance-settings"], updated);
       toast.success("ບັນທຶກຂໍ້ມູນບັນຊີທະນາຄານສໍາເລັດ");
@@ -60,7 +64,9 @@ export function BankPaymentSection() {
     <Card>
       <CardHeader>
         <CardTitle>ບັນຊີທະນາຄານ (ໃບເກັບເງິນ)</CardTitle>
-        <CardDescription>ຕັ້ງຄ່າທົ່ວໂລກ — ຈະສະແດງໃນ PDF ໃບເກັບເງິນ ທຸກໃບ (ຊື່ບັນຊີ, ເລກບັນຊີ, QR code).</CardDescription>
+        <CardDescription>
+          ຕັ້ງຄ່າທົ່ວໂລກ — ຈະສະແດງໃນ PDF ໃບເກັບເງິນ ທຸກໃບ (ຊື່ບັນຊີ, ເລກບັນຊີ, QR code).
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? (
@@ -108,6 +114,21 @@ export function BankPaymentSection() {
               widthPx={400}
               heightPx={400}
             />
+
+            <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+              <div className="space-y-1">
+                <Label htmlFor="autoLedgerOnPayment">ບັນທຶກລາຍຮັບອັດຕະໂນມັດ</Label>
+                <p className="text-muted-foreground text-sm">
+                  ເມື່ອຮັບຊຳລະເງິນ (Payment) ຈະສ້າງລາຍການໃນສະຫມຸດລາຍຮັບ-ລາຍຈ່າຍອັດຕະໂນມັດ.
+                  ຍົກເລີກໃບເສັດ → ລຶບລາຍການ ledger ທີ່ເຊື່ອມກັນ.
+                </p>
+              </div>
+              <Switch
+                id="autoLedgerOnPayment"
+                checked={autoLedgerOnPayment}
+                onCheckedChange={setAutoLedgerOnPayment}
+              />
+            </div>
 
             <div className="flex justify-end">
               <Button onClick={onSave} isLoading={saving}>

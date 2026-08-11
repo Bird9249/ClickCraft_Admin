@@ -181,6 +181,12 @@ const ReceiptsPage = lazy(() =>
   ),
 );
 
+const LedgerPage = lazy(() =>
+  import("@/modules/finance/presentation/pages/LedgerPage").then(
+    (module) => ({ default: module.LedgerPage }),
+  ),
+);
+
 const rootRoute = createRootRoute({
   component: RootLayout,
   errorComponent: ErrorBoundary,
@@ -495,6 +501,18 @@ const receiptsRoute = createRoute({
   ),
 });
 
+const ledgerRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/ledger",
+  component: () => (
+    <RequirePermissions all={["finance:read"]}>
+      <LazyPage>
+        <LedgerPage />
+      </LazyPage>
+    </RequirePermissions>
+  ),
+});
+
 const forbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/errors/forbidden",
@@ -543,6 +561,7 @@ export const routeTree = rootRoute.addChildren([
     invoiceCreateRoute,
     invoiceEditRoute,
     receiptsRoute,
+    ledgerRoute,
   ]),
   forbiddenRoute,
 ]);

@@ -1,15 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/kit";
 import type {
+  ConvertLedgerPartyDTO,
   CreateFromQuotationDTO,
   CreateInvoiceDTO,
+  CreateLedgerEntryDTO,
   CreatePaymentDTO,
   CreateQuotationDTO,
+  LinkLedgerPaymentDTO,
   UpdateInvoiceDTO,
+  UpdateLedgerEntryDTO,
   UpdateQuotationDTO,
 } from "@/modules/finance/domain/contracts";
 import type { OffsetPageQueryDTO } from "@/shared/contracts/base";
-import { invoicesApi, quotationsApi, receiptsApi } from "./client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invoicesApi, ledgerApi, quotationsApi, receiptsApi } from "./client";
 
 // ─── Quotations ───────────────────────────────────────────────────────────────
 
@@ -245,4 +249,122 @@ export function useVoidReceipt() {
       });
     });
   return { ...base, run };
+}
+
+// ─── Ledger ───────────────────────────────────────────────────────────────────
+
+export const ledgerKeys = {
+  all: ["ledger"] as const,
+  list: (q: Partial<OffsetPageQueryDTO>) => ["ledger", "list", q] as const,
+  detail: (id: string) => ["ledger", "detail", id] as const,
+  lookups: ["ledger", "lookups"] as const,
+  convertibleParties: ["ledger", "convertible-parties"] as const,
+  reconciliation: ["ledger", "reconciliation"] as const,
+};
+
+export function useLedgerQuery(q: Partial<OffsetPageQueryDTO> = {}) {
+  const query: OffsetPageQueryDTO = {
+    limit: q.limit ?? 50,
+    offset: q.offset ?? 0,
+    sort: q.sort,
+    filters: q.filters,
+  };
+  return useQuery({
+    queryKey: ledgerKeys.list(query),
+    queryFn: () => ledgerApi.list(query),
+  });
+}
+
+export function useLedgerLookupsQuery() {
+  return useQuery({
+    queryKey: ledgerKeys.lookups,
+    queryFn: () => ledgerApi.lookups(),
+  });
+}
+
+export function useCreateLedgerEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateLedgerEntryDTO) => ledgerApi.create(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ledgerKeys.all }),
+    onError: () => toast.error("ບັນທຶກລາຍການລົ້ມເຫຼວ"),
+  });
+}
+
+export function useUpdateLedgerEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateLedgerEntryDTO }) =>
+      ledgerApi.update(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ledgerKeys.all }),
+    onError: () => toast.error("ແກ້ໄຂລາຍການລົ້ມເຫຼວ"),
+  });
+}
+
+export function useDeleteLedgerEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => ledgerApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ledgerKeys.all }),
+    onError: () => toast.error("ລຶບລາຍການລົ້ມເຫຼວ"),
+  });
+}
+
+export function useImportLedgerCsv() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, mode }: { file: File; mode: "append" | "replace" }) =>
+      ledgerApi.importCsv(file, mode),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ledgerKeys.all });
+      toast.success(`ນຳເຂົ້າ ${result.imported} ລາຍການສໍາເລັດ`, {
+        description:
+          result.skipped > 0 ? `ຂ້າມ ${result.skipped} ແຖວ` : undefined,
+      });
+    },
+    onError: () => toast.error("ນຳເຂົ້າ CSV ລົ້ມເຫຼວ"),
+  });
+}
+
+export function useConvertibleRelatedPartiesQuery(enabled = true) {
+  return useQuery({
+    queryKey: ledgerKeys.convertibleParties,
+    queryFn: () => ledgerApi.convertibleParties(),
+    enabled,
+  });
+}
+
+export function useConvertLedgerParty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ConvertLedgerPartyDTO) => ledgerApi.convertParty(input),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ledgerKeys.all });
+      toast.success(`ແປງ ${result.updatedCount} ລາຍການສໍາເລັດ`, {
+        description: `${result.sourceRelatedParty} → ${result.customerName}`,
+      });
+    },
+    onError: () => toast.error("ແປງຜູ້ກ່ຽວຂ້ອງລົ້ມເຫຼວ"),
+  });
+}
+
+export function useLedgerReconciliationQuery(enabled = true) {
+  return useQuery({
+    queryKey: ledgerKeys.reconciliation,
+    queryFn: () => ledgerApi.reconciliation(),
+    enabled,
+  });
+}
+
+export function useLinkLedgerPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: LinkLedgerPaymentDTO) => ledgerApi.linkPayment(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ledgerKeys.all });
+      qc.invalidateQueries({ queryKey: ledgerKeys.reconciliation });
+      toast.success("ຜູກລາຍການສໍາເລັດ");
+    },
+    onError: () => toast.error("ຜູກລາຍການລົ້ມເຫຼວ"),
+  });
 }

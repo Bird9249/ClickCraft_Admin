@@ -84,6 +84,7 @@
     "db:studio": "drizzle-kit studio",
     "db:seed:admin": "bun run src/server/scripts/seed-admin.ts",
     "db:seed:finance": "bun run src/server/scripts/seed-finance-demo.ts",
+    "db:seed:ledger": "bun run src/server/scripts/seed-ledger.ts",
     "db:seed:leads": "bun run src/server/scripts/seed-leads-demo.ts",
     "test:leads": "bun test src/modules/leads",
     "test:distribution": "bun test src/modules/distribution",

@@ -3,6 +3,7 @@ import type { DbTransaction } from "@/shared/types";
 import { eq } from "drizzle-orm";
 import type { CreatePaymentDTO } from "../contracts";
 import { createPaymentWithReceipt } from "../repo/payments/create";
+import { deleteLedgerByPaymentId } from "../repo/ledger/delete-by-payment";
 import { getReceiptById } from "../repo/receipts/get-by-id";
 
 export async function createPaymentService(
@@ -47,6 +48,8 @@ export async function voidReceiptService(
       .set({ amountPaid: newAmountPaid, status: newStatus, updatedAt: new Date() })
       .where(eq(schema.invoice.id, rc.invoiceId));
   }
+
+  await deleteLedgerByPaymentId(rc.paymentId, client);
 
   return { voided: true };
 }

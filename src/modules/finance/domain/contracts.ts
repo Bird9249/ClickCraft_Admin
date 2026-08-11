@@ -158,7 +158,83 @@ export const UpdateFinanceSettingsSchema = z.object({
   accountName: z.string().trim().max(200).optional().nullable(),
   accountNumber: z.string().trim().max(100).optional().nullable(),
   qrImageKey: z.string().trim().max(500).optional().nullable(),
+  autoLedgerOnPayment: z.boolean().optional(),
 });
 export type UpdateFinanceSettingsDTO = z.infer<
   typeof UpdateFinanceSettingsSchema
 >;
+
+// ─── Ledger (income / expense) ────────────────────────────────────────────────
+
+export const LedgerTypeSchema = z.enum(["income", "expense"]);
+export type LedgerTypeDTO = z.infer<typeof LedgerTypeSchema>;
+
+export const LedgerPartyTypeSchema = z.enum(["customer", "internal"]);
+export type LedgerPartyTypeDTO = z.infer<typeof LedgerPartyTypeSchema>;
+
+export const LedgerSourceTypeSchema = z.enum([
+  "manual",
+  "csv_import",
+  "payment",
+]);
+export type LedgerSourceTypeDTO = z.infer<typeof LedgerSourceTypeSchema>;
+
+export const CreateLedgerEntrySchema = z
+  .object({
+    type: LedgerTypeSchema,
+    entryDate: z.coerce.date(),
+    category: z.string().trim().min(1, "ຕ້ອງໃສ່ລາຍການ"),
+    amount: z.number().int().positive("ຈໍານວນເງິນຕ້ອງຫຼາຍກວ່າ 0"),
+    partyType: LedgerPartyTypeSchema.optional().nullable(),
+    customerId: z.string().trim().optional().nullable(),
+    relatedParty: z.string().trim().optional().nullable(),
+    notes: z.string().trim().optional().nullable(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.type === "income") {
+      if (!val.partyType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["partyType"],
+          message: "ຕ້ອງເລືອກລູກຄ້າຫຼືຜູ້ກ່ຽວຂ້ອງ",
+        });
+      } else if (val.partyType === "customer" && !val.customerId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customerId"],
+          message: "ຕ້ອງເລືອກລູກຄ້າ",
+        });
+      } else if (val.partyType === "internal" && !val.relatedParty?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["relatedParty"],
+          message: "ຕ້ອງເລືອກຜູ້ກ່ຽວຂ້ອງ",
+        });
+      }
+    }
+  });
+export type CreateLedgerEntryDTO = z.infer<typeof CreateLedgerEntrySchema>;
+
+/** Server-side fields when persisting ledger rows (not from HTTP form). */
+export type CreateLedgerEntryRepoInput = CreateLedgerEntryDTO & {
+  createdBy?: string | null;
+  sourceType?: LedgerSourceTypeDTO;
+  paymentId?: string | null;
+  invoiceId?: string | null;
+  receiptId?: string | null;
+};
+
+export const UpdateLedgerEntrySchema = CreateLedgerEntrySchema;
+export type UpdateLedgerEntryDTO = z.infer<typeof UpdateLedgerEntrySchema>;
+
+export const ConvertLedgerPartySchema = z.object({
+  sourceRelatedParty: z.string().trim().min(1, "ຕ້ອງເລືອກຜູ້ກ່ຽວຂ້ອງ"),
+  customerId: z.string().trim().min(1, "ຕ້ອງເລືອກລູກຄ້າ"),
+});
+export type ConvertLedgerPartyDTO = z.infer<typeof ConvertLedgerPartySchema>;
+
+export const LinkLedgerPaymentSchema = z.object({
+  ledgerEntryId: z.string().trim().min(1, "ຕ້ອງເລືອກລາຍການ ledger"),
+  paymentId: z.string().trim().min(1, "ຕ້ອງເລືອກການຊໍາລະ"),
+});
+export type LinkLedgerPaymentDTO = z.infer<typeof LinkLedgerPaymentSchema>;

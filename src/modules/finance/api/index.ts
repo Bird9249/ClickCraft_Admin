@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { requireAuth } from "@/modules/roles/domain/http/middleware";
 import { serverContext } from "@/server/platform/http/context";
+import { ledgerRoutes } from "../domain/http/ledger.routes";
 import { invoicesRoutes } from "../domain/http/invoices.routes";
 import { quotationsRoutes } from "../domain/http/quotations.routes";
 import { receiptsRoutes } from "../domain/http/receipts.routes";
@@ -31,4 +32,10 @@ export const financeRoutes = new Elysia()
       .use(serverContext)
       .onBeforeHandle(requireAuth)
       .use(financeSettingsRoutes),
+  )
+  .use(
+    new Elysia({ prefix: "/ledger" })
+      .use(serverContext)
+      .onBeforeHandle(requireAuth)
+      .use(ledgerRoutes),
   );

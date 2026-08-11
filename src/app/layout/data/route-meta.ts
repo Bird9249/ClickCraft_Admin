@@ -49,6 +49,7 @@ export const routeMeta: Record<string, RouteMeta> = {
     parent: "/app/invoices",
   },
   "/app/receipts": { label: "ໃບຮັບເງິນ" },
+  "/app/ledger": { label: "ລາຍຮັບ-ລາຍຈ່າຍ" },
   "/app/roles": { label: "ບົດບາດ" },
   "/app/roles/create": {
     label: "ສ້າງບົດບາດ",

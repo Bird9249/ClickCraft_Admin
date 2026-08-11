@@ -1,5 +1,10 @@
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
+import {
+  countUnlinkedLedgerIncome,
+  countUnlinkedPayments,
+} from "@/modules/finance/domain/repo/ledger/reconciliation";
+import { getLedgerSummary } from "@/modules/finance/domain/repo/ledger/list";
 import { and, asc, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
 
 const OPEN_INVOICE_STATUSES = ["issued", "partial"] as const;
@@ -199,9 +204,42 @@ export async function getDashboardSummary(client: DbTransaction) {
   const quotationsMap = toMonthMap(quotationsByMonthRows);
   const leadsMap = toMonthMap(leadsByMonthRows);
 
+  const ledgerIncomeByMonthRows = await client
+    .select({
+      month: sql<string>`to_char(date_trunc('month', ${schema.ledgerEntry.entryDate}), 'YYYY-MM')`,
+      value: sql<number>`coalesce(sum(${schema.ledgerEntry.amount}), 0)::int`,
+    })
+    .from(schema.ledgerEntry)
+    .where(
+      and(
+        eq(schema.ledgerEntry.type, "income"),
+        gte(schema.ledgerEntry.entryDate, seriesStart),
+      ),
+    )
+    .groupBy(sql`date_trunc('month', ${schema.ledgerEntry.entryDate})`);
+
+  const ledgerExpenseByMonthRows = await client
+    .select({
+      month: sql<string>`to_char(date_trunc('month', ${schema.ledgerEntry.entryDate}), 'YYYY-MM')`,
+      value: sql<number>`coalesce(sum(${schema.ledgerEntry.amount}), 0)::int`,
+    })
+    .from(schema.ledgerEntry)
+    .where(
+      and(
+        eq(schema.ledgerEntry.type, "expense"),
+        gte(schema.ledgerEntry.entryDate, seriesStart),
+      ),
+    )
+    .groupBy(sql`date_trunc('month', ${schema.ledgerEntry.entryDate})`);
+
+  const ledgerIncomeMap = toMonthMap(ledgerIncomeByMonthRows);
+  const ledgerExpenseMap = toMonthMap(ledgerExpenseByMonthRows);
+
   const monthlySeries = monthKeys.map((key) => {
     const [y, m] = key.split("-").map(Number);
     const monthIndex = (m ?? 1) - 1;
+    const ledgerIncome = ledgerIncomeMap.get(key) ?? 0;
+    const ledgerExpense = ledgerExpenseMap.get(key) ?? 0;
     return {
       month: key,
       label: LAO_MONTH_SHORT[monthIndex] ?? key,
@@ -209,6 +247,9 @@ export async function getDashboardSummary(client: DbTransaction) {
       received: receivedMap.get(key) ?? 0,
       quotations: quotationsMap.get(key) ?? 0,
       leads: leadsMap.get(key) ?? 0,
+      ledgerIncome,
+      ledgerExpense,
+      ledgerNet: ledgerIncome - ledgerExpense,
     };
   });
 
@@ -233,6 +274,37 @@ export async function getDashboardSummary(client: DbTransaction) {
     }
   }
 
+  const [
+    ledgerTotals,
+    ledgerMonthRows,
+    unlinkedLedgerCount,
+    unlinkedPaymentCount,
+  ] = await Promise.all([
+    getLedgerSummary(client),
+    client
+      .select({
+        type: schema.ledgerEntry.type,
+        total: sql<number>`cast(coalesce(sum(${schema.ledgerEntry.amount}), 0) as int)`,
+      })
+      .from(schema.ledgerEntry)
+      .where(
+        and(
+          gte(schema.ledgerEntry.entryDate, monthStart),
+          lt(schema.ledgerEntry.entryDate, monthEnd),
+        ),
+      )
+      .groupBy(schema.ledgerEntry.type),
+    countUnlinkedLedgerIncome(client),
+    countUnlinkedPayments(client),
+  ]);
+
+  let ledgerIncomeThisMonth = 0;
+  let ledgerExpenseThisMonth = 0;
+  for (const row of ledgerMonthRows) {
+    if (row.type === "income") ledgerIncomeThisMonth = row.total;
+    if (row.type === "expense") ledgerExpenseThisMonth = row.total;
+  }
+
   return {
     currency: "LAK",
     outstandingAmount: outstandingRow?.amount ?? 0,
@@ -254,6 +326,17 @@ export async function getDashboardSummary(client: DbTransaction) {
       ...row,
       customerName: row.customerName ?? "—",
     })),
+    ledger: {
+      totalIncome: ledgerTotals.totalIncome,
+      totalExpense: ledgerTotals.totalExpense,
+      balance: ledgerTotals.balance,
+      entryCount: ledgerTotals.entryCount,
+      incomeThisMonth: ledgerIncomeThisMonth,
+      expenseThisMonth: ledgerExpenseThisMonth,
+      netThisMonth: ledgerIncomeThisMonth - ledgerExpenseThisMonth,
+      unlinkedLedgerCount,
+      unlinkedPaymentCount,
+    },
   };
 }
 

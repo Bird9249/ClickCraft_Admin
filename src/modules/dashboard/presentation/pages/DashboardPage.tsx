@@ -1,13 +1,16 @@
-import { Link } from "@tanstack/react-router";
-import { FilePlus2, Users } from "lucide-react";
 import { Header } from "@/app/layout/Header";
 import { Main } from "@/app/layout/Main";
 import { Button } from "@/components/kit";
 import { usePermissions } from "@/modules/auth/presentation/model/usePermissions";
+import { Link } from "@tanstack/react-router";
+import { FilePlus2, Users } from "lucide-react";
 import { useDashboardSummaryQuery } from "../api/queries";
 import { ActivityChart } from "../ui/ActivityChart";
 import { AttentionInvoices } from "../ui/AttentionInvoices";
+import { DocumentsVsLedgerChart } from "../ui/DocumentsVsLedgerChart";
 import { InvoiceStatusChart } from "../ui/InvoiceStatusChart";
+import { LedgerCashflowChart } from "../ui/LedgerCashflowChart";
+import { LedgerStatCards } from "../ui/LedgerStatCards";
 import { QuotationPipeline } from "../ui/QuotationPipeline";
 import { RecentQuotations } from "../ui/RecentQuotations";
 import { RevenueChart } from "../ui/RevenueChart";
@@ -30,7 +33,7 @@ export function DashboardPage() {
             </h1>
             <p className="text-muted-foreground">
               {
-                "ພາບລວມງານ ClickCraft — pipeline ແລະຍອດຄ້າງຊຳລະ"
+                "ພາບລວມງານ ClickCraft — pipeline, ຍອດຄ້າງຊຳລະ ແລະສະຫມຸດເງິນສົດ"
               }
             </p>
           </div>
@@ -66,6 +69,21 @@ export function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-4">
             <StatCards data={data} isLoading={isLoading} />
+
+            <LedgerStatCards data={data} isLoading={isLoading} />
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <LedgerCashflowChart
+                data={data?.monthlySeries}
+                currency={data?.currency}
+                isLoading={isLoading}
+              />
+              <DocumentsVsLedgerChart
+                data={data?.monthlySeries}
+                currency={data?.currency}
+                isLoading={isLoading}
+              />
+            </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <RevenueChart

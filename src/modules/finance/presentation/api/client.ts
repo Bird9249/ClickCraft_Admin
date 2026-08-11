@@ -1,16 +1,22 @@
 import type {
   CreateFromQuotationDTO,
   CreateInvoiceDTO,
+  CreateLedgerEntryDTO,
+  ConvertLedgerPartyDTO,
   CreatePaymentDTO,
   CreateQuotationDTO,
+  LinkLedgerPaymentDTO,
   UpdateFinanceSettingsDTO,
   UpdateInvoiceDTO,
+  UpdateLedgerEntryDTO,
   UpdateQuotationDTO,
   UpdateReceiptDTO,
 } from "@/modules/finance/domain/contracts";
 import type {
   InvoiceByIdResult,
   InvoicesListResult,
+  LedgerEntryByIdResult,
+  LedgerListResult,
   QuotationByIdResult,
   QuotationsListResult,
   ReceiptByIdResult,
@@ -90,6 +96,7 @@ export type FinanceSettingsDTO = {
   accountName: string | null;
   accountNumber: string | null;
   qrImageKey: string | null;
+  autoLedgerOnPayment: boolean;
   updatedAt: string | Date;
 };
 
@@ -99,6 +106,131 @@ export const financeSettingsApi = {
   update: (input: UpdateFinanceSettingsDTO) =>
     fetcher.put<FinanceSettingsDTO>(
       `${config.apiUrl}/finance-settings`,
+      input,
+    ),
+};
+
+export type LedgerSummaryDTO = {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  entryCount: number;
+};
+
+export type LedgerListResponse = LedgerListResult & {
+  summary: LedgerSummaryDTO;
+};
+
+export type LedgerLookupsDTO = {
+  categories: string[];
+  relatedParties: string[];
+};
+
+export type LedgerImportResultDTO = {
+  imported: number;
+  skipped: number;
+  errors: string[];
+  batchId: string;
+  summary: LedgerSummaryDTO;
+};
+
+export type ConvertibleRelatedPartyDTO = {
+  name: string;
+  entryCount: number;
+};
+
+export type ConvertLedgerPartyResultDTO = {
+  updatedCount: number;
+  sourceRelatedParty: string;
+  customerId: string;
+  customerName: string;
+};
+
+export type LedgerReconciliationSuggestionDTO = {
+  ledgerEntryId: string;
+  paymentId: string;
+  ledgerAmount: number;
+  paymentAmount: number;
+  ledgerDate: string | Date;
+  paymentDate: string | Date;
+  relatedParty: string | null;
+  customerName: string;
+  receiptNumber: string;
+  invoiceNumber: string;
+};
+
+export type LedgerReconciliationDTO = {
+  unlinkedLedgerCount: number;
+  unlinkedPaymentCount: number;
+  unlinkedLedger: Array<{
+    id: string;
+    entryDate: string | Date;
+    category: string;
+    amount: number;
+    relatedParty: string | null;
+    customerId: string | null;
+    sourceType: string;
+    notes: string | null;
+  }>;
+  unlinkedPayments: Array<{
+    paymentId: string;
+    paidAt: string | Date;
+    amount: number;
+    method: string;
+    reference: string | null;
+    receiptId: string;
+    receiptNumber: string;
+    invoiceId: string;
+    invoiceNumber: string;
+    customerId: string;
+    customerName: string;
+  }>;
+  suggestions: LedgerReconciliationSuggestionDTO[];
+};
+
+export type LinkLedgerPaymentResultDTO = {
+  updated: LedgerEntryByIdResult;
+};
+
+export const ledgerApi = {
+  list: (q: OffsetPageQueryDTO) =>
+    fetcher.get<LedgerListResponse>(buildListUrl("/ledger", q)),
+  get: (id: string) =>
+    fetcher.get<LedgerEntryByIdResult>(`${config.apiUrl}/ledger/${id}`),
+  summary: () =>
+    fetcher.get<LedgerSummaryDTO>(`${config.apiUrl}/ledger/summary`),
+  lookups: () =>
+    fetcher.get<LedgerLookupsDTO>(`${config.apiUrl}/ledger/lookups`),
+  create: (input: CreateLedgerEntryDTO) =>
+    fetcher.post(`${config.apiUrl}/ledger`, input),
+  update: (id: string, input: UpdateLedgerEntryDTO) =>
+    fetcher.put(`${config.apiUrl}/ledger/${id}`, input),
+  remove: (id: string) => fetcher.delete(`${config.apiUrl}/ledger/${id}`),
+  importCsv: (file: File, mode: "append" | "replace") => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("mode", mode);
+    return fetcher.postForm<LedgerImportResultDTO>(
+      `${config.apiUrl}/ledger/import`,
+      fd,
+    );
+  },
+  convertibleParties: () =>
+    fetcher.get<ConvertibleRelatedPartyDTO[]>(
+      `${config.apiUrl}/ledger/convertible-parties`,
+    ),
+  convertParty: (input: ConvertLedgerPartyDTO) =>
+    fetcher.post<ConvertLedgerPartyResultDTO>(
+      `${config.apiUrl}/ledger/convert-party`,
+      input,
+    ),
+  reconciliation: () =>
+    fetcher.get<LedgerReconciliationDTO>(
+      `${config.apiUrl}/ledger/reconciliation`,
+    ),
+  linkPayment: (input: LinkLedgerPaymentDTO) =>
+    fetcher.post<LinkLedgerPaymentResultDTO>(
+      `${config.apiUrl}/ledger/link-payment`,
       input,
     ),
 };

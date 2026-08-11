@@ -18,6 +18,9 @@ export async function upsertFinanceSettings(
       accountName: input.accountName ?? null,
       accountNumber: input.accountNumber ?? null,
       qrImageKey: input.qrImageKey ?? null,
+      ...(input.autoLedgerOnPayment !== undefined
+        ? { autoLedgerOnPayment: input.autoLedgerOnPayment }
+        : {}),
       updatedAt: new Date(),
     })
     .where(eq(schema.financeSettings.id, FINANCE_SETTINGS_ID))
