@@ -10,6 +10,7 @@ import {
   Input,
 } from "@/components/kit";
 import { Textarea } from "@/components/ui/textarea";
+import { DEFAULT_CHUNK_SIZE } from "@/shared/lib/chunk-upload-s3";
 import { sha256Hex } from "@/shared/lib/sha256-file";
 import { ChunkFileUpload } from "@/shared/ui/ChunkFileUpload";
 import { SimpleSelect } from "@/shared/ui/SimpleSelect";
@@ -161,14 +162,23 @@ export function UploadReleaseDialog({
             <p className="font-medium text-sm">ໄຟລ໌ APK</p>
             <ChunkFileUpload
               keyPrefix={keyPrefix}
+              chunkSize={DEFAULT_CHUNK_SIZE}
               accept=".apk,application/vnd.android.package-archive"
               buttonLabel="ເລືອກໄຟລ໌ APK"
-              hint="ແນະນຳໃຫ້ກໍຳນົດ version/build ກ່ອນອັບໂຫຼດ"
+              hint="ລາກແລະວາງ .apk ຫຼື ກົດເພື່ອເລືອກ — ແບ່ງ chunk ລະ 5MB · ແນະນຳໃຫ້ກໍຳນົດ version/build ກ່ອນ"
+              disabled={hashing || createRelease.isPending}
+              validateFile={(file) =>
+                file.name.toLowerCase().endsWith(".apk")
+                  ? null
+                  : "ຮອງຮັບແຕ່ໄຟລ໌ .apk"
+              }
               onSuccess={async (key, file) => {
                 setFileKey(key);
                 setFileName(file.name);
                 setFileSize(file.size);
-                setContentType(file.type || null);
+                setContentType(
+                  file.type || "application/vnd.android.package-archive",
+                );
                 setChecksumSha256(null);
                 setHashing(true);
                 try {

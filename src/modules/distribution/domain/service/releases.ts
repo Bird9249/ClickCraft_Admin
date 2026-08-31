@@ -1,9 +1,11 @@
 import type { DbTransaction } from "@/shared/types";
-import type { CreateReleaseDTO, UpdateReleaseDTO } from "../contracts";
+import type { CreateReleaseDTO, ReplaceReleaseFileDTO, UpdateReleaseDTO } from "../contracts";
 import { getAppById } from "../repo/apps/get-by-id";
 import { createRelease } from "../repo/releases/create";
 import { getReleaseById } from "../repo/releases/get-by-id";
 import { updateRelease } from "../repo/releases/update";
+import { deleteRelease } from "../repo/releases/delete";
+import { deleteObjectFromS3 } from "@/server/utils/s3-delete-object";
 
 export class ReleaseValidationError extends Error {
   constructor(message: string) {
@@ -73,6 +75,41 @@ export async function updateReleaseService(
   return getReleaseById(id, client);
 }
 
+export async function replaceReleaseFileService(
+  client: DbTransaction,
+  id: string,
+  input: ReplaceReleaseFileDTO,
+) {
+  const existing = await getReleaseById(id, client);
+  if (!existing) return null;
+  if (existing.status === "archived") {
+    throw new ReleaseValidationError("Cannot replace file on archived release");
+  }
+  if (!input.fileName.toLowerCase().endsWith(".apk")) {
+    throw new ReleaseValidationError("fileName must end with .apk");
+  }
+
+  const oldFileKey = existing.fileKey;
+
+  await updateRelease(
+    id,
+    {
+      fileKey: input.fileKey,
+      fileName: input.fileName,
+      fileSize: input.fileSize,
+      contentType: input.contentType ?? null,
+      checksumSha256: input.checksumSha256 ?? null,
+    },
+    client,
+  );
+
+  if (oldFileKey && oldFileKey !== input.fileKey) {
+    await deleteObjectFromS3(oldFileKey);
+  }
+
+  return getReleaseById(id, client);
+}
+
 export async function publishReleaseService(client: DbTransaction, id: string) {
   const existing = await getReleaseById(id, client);
   if (!existing) return null;
@@ -103,4 +140,23 @@ export async function archiveReleaseService(client: DbTransaction, id: string) {
 
   await updateRelease(id, { status: "archived" }, client);
   return getReleaseById(id, client);
+}
+
+export async function deleteReleaseService(client: DbTransaction, id: string) {
+  const existing = await getReleaseById(id, client);
+  if (!existing) return null;
+
+  if (existing.fileKey) {
+    const deletedFromStorage = await deleteObjectFromS3(existing.fileKey);
+    if (!deletedFromStorage) {
+      throw new ReleaseValidationError("Failed to delete APK from storage");
+    }
+  }
+
+  const deleted = await deleteRelease(id, client);
+  if (!deleted) {
+    throw new ReleaseValidationError("Failed to delete release");
+  }
+
+  return { deleted };
 }

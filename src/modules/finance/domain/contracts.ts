@@ -64,9 +64,12 @@ export const PaymentScheduleItemSchema = z.object({
 });
 export type PaymentScheduleItemDTO = z.infer<typeof PaymentScheduleItemSchema>;
 
-// ─── Quotations ──────────────────────────────────────────────────────────────
+export const QuotationDocumentModeSchema = z.enum(["builtin", "attachment"]);
+export type QuotationDocumentModeDTO = z.infer<
+  typeof QuotationDocumentModeSchema
+>;
 
-export const CreateQuotationSchema = z.object({
+const QuotationCommonFieldsSchema = z.object({
   customerId: z.string().min(1, "ຕ້ອງເລືອກລູກຄ້າ"),
   issueDate: z.coerce.date(),
   validUntil: z.coerce.date().optional().nullable(),
@@ -76,18 +79,75 @@ export const CreateQuotationSchema = z.object({
   internalNotes: z.string().optional().nullable(),
   sourcePresetId: z.string().optional().nullable(),
   showSignature: z.boolean().default(true),
+  documentMode: QuotationDocumentModeSchema.default("builtin"),
   paymentSchedule: z
     .array(PaymentScheduleItemSchema)
     .min(1)
     .optional()
     .nullable(),
-  lines: z.array(LineInputSchema).min(1, "ຕ້ອງມີຢ່າງໜ້ອຍ 1 ລາຍການ"),
+  lines: z.array(LineInputSchema).optional().default([]),
+  attachmentFileKey: z.string().trim().max(1024).optional().nullable(),
+  attachmentFileName: z.string().trim().max(255).optional().nullable(),
+  attachmentContentType: z.string().trim().max(200).optional().nullable(),
+  /** Required when documentMode is attachment */
+  contractTotal: z.number().int().positive().optional(),
 });
+
+function refineQuotationDocumentMode(
+  val: z.infer<typeof QuotationCommonFieldsSchema>,
+  ctx: z.RefinementCtx,
+) {
+  if (val.documentMode === "builtin") {
+    if (!val.lines || val.lines.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["lines"],
+        message: "ຕ້ອງມີຢ່າງໜ້ອຍ 1 ລາຍການ",
+      });
+    }
+    return;
+  }
+
+  if (!val.attachmentFileKey?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["attachmentFileKey"],
+      message: "ຕ້ອງອັບໂຫຼດເອກະສານ",
+    });
+  }
+  if (!val.contractTotal || val.contractTotal <= 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["contractTotal"],
+      message: "ຕ້ອງໃສ່ຍອດລວມສັນຍາ",
+    });
+  }
+}
+
+// ─── Quotations ──────────────────────────────────────────────────────────────
+
+export const CreateQuotationSchema = QuotationCommonFieldsSchema.superRefine(
+  refineQuotationDocumentMode,
+);
 export type CreateQuotationDTO = z.infer<typeof CreateQuotationSchema>;
 
-export const UpdateQuotationSchema = CreateQuotationSchema.partial().extend({
-  lines: z.array(LineInputSchema).optional(),
-});
+export const UpdateQuotationSchema =
+  QuotationCommonFieldsSchema.partial().superRefine((val, ctx) => {
+    if (val.documentMode === undefined && val.lines === undefined) return;
+    refineQuotationDocumentMode(
+      {
+        customerId: val.customerId ?? "",
+        issueDate: val.issueDate ?? new Date(),
+        currency: val.currency ?? "LAK",
+        showSignature: val.showSignature ?? true,
+        documentMode: val.documentMode ?? "builtin",
+        lines: val.lines ?? [],
+        attachmentFileKey: val.attachmentFileKey,
+        contractTotal: val.contractTotal,
+      },
+      ctx,
+    );
+  });
 export type UpdateQuotationDTO = z.infer<typeof UpdateQuotationSchema>;
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────

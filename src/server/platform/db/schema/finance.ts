@@ -56,6 +56,11 @@ export const quotation = pgTable(
     internalNotes: text("internal_notes"),
     /** Payment milestones: [{ percent, label, condition, dueDays? }] */
     paymentSchedule: jsonb("payment_schedule"),
+    /** builtin | attachment */
+    documentMode: text("document_mode").notNull().default("builtin"),
+    attachmentFileKey: text("attachment_file_key"),
+    attachmentFileName: text("attachment_file_name"),
+    attachmentContentType: text("attachment_content_type"),
     /** Show signature block on printed PDF */
     showSignature: boolean("show_signature").notNull().default(true),
     sourcePresetId: text("source_preset_id"),

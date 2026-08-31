@@ -2,6 +2,7 @@ import type {
   CreateAppDTO,
   CreateReleaseDTO,
   CreateShareLinkDTO,
+  ReplaceReleaseFileDTO,
   UpdateReleaseDTO,
 } from "@/modules/distribution/domain/contracts";
 import type {
@@ -81,6 +82,11 @@ export const distributionApi = {
       `${config.apiUrl}/distribution/releases/${id}`,
       input,
     ),
+  replaceReleaseFile: (id: string, input: ReplaceReleaseFileDTO) =>
+    fetcher.post<NonNullable<ReleaseByIdResult>>(
+      `${config.apiUrl}/distribution/releases/${id}/replace-file`,
+      input,
+    ),
   publishRelease: (id: string) =>
     fetcher.post<NonNullable<ReleaseByIdResult>>(
       `${config.apiUrl}/distribution/releases/${id}/publish`,
@@ -89,6 +95,8 @@ export const distributionApi = {
     fetcher.post<NonNullable<ReleaseByIdResult>>(
       `${config.apiUrl}/distribution/releases/${id}/archive`,
     ),
+  deleteRelease: (id: string) =>
+    fetcher.delete(`${config.apiUrl}/distribution/releases/${id}`),
   listShareLinks: (releaseId: string) =>
     fetcher.get<{ data: ShareLinkRow[] }>(
       `${config.apiUrl}/distribution/releases/${releaseId}/share-links`,

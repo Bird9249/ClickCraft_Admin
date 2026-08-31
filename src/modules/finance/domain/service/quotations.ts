@@ -48,6 +48,13 @@ export async function sendQuotationService(
   const qt = await getQuotationById(params.id, client);
   if (!qt) throw new Error("Quotation not found");
   if (qt.status !== "draft") throw new Error("Only draft quotations can be sent");
+  if (qt.total <= 0) throw new Error("Quotation total must be greater than zero");
+  if (qt.documentMode === "attachment") {
+    if (!qt.attachmentFileKey)
+      throw new Error("Attachment quotation must have an uploaded document");
+  } else if (qt.lines.length === 0) {
+    throw new Error("Quotation must have at least one line item");
+  }
 
   const [updated] = await client
     .update(schema.quotation)
@@ -113,6 +120,7 @@ export async function duplicateQuotationService(
   if (!qt) throw new Error("Quotation not found");
 
   const number = await nextDocNumber(client, "quotation");
+  const isAttachment = qt.documentMode === "attachment";
   const created = await createQuotation(
     {
       number,
@@ -123,8 +131,14 @@ export async function duplicateQuotationService(
       taxNote: qt.taxNote ?? null,
       notes: qt.notes ?? null,
       internalNotes: qt.internalNotes ?? null,
+      paymentSchedule: qt.paymentSchedule ?? null,
+      documentMode: qt.documentMode ?? "builtin",
+      attachmentFileKey: qt.attachmentFileKey ?? null,
+      attachmentFileName: qt.attachmentFileName ?? null,
+      attachmentContentType: qt.attachmentContentType ?? null,
+      contractTotal: isAttachment ? qt.total : undefined,
       createdBy: params.actorId ?? null,
-      lines: toLineInputs(qt.lines),
+      lines: isAttachment ? [] : toLineInputs(qt.lines),
     },
     client,
   );

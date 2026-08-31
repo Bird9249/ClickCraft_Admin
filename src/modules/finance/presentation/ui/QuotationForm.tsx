@@ -2,22 +2,25 @@ import { z } from "zod";
 import {
   Button,
   FormActions,
+  FormAmountInput,
   FormCheckbox,
   FormInput,
   FormRoot,
   FormTextarea,
+  FormToggleGroup,
   RHF,
   zodResolver,
 } from "@/components/kit";
-import { config } from "@/shared/lib/config";
-import { fetchLookupForInfinite, hydrateLookupItem } from "@/shared/lib/utils";
-import { FormInfiniteCombobox } from "@/components/kit";
 import type { CustomerDTO } from "@/modules/customers/domain/contracts";
 import {
   DEFAULT_PAYMENT_SCHEDULE,
   paymentScheduleTotalPercent,
 } from "@/modules/finance/domain/payment-schedule";
 import { isRichTextEmpty } from "@/shared/lib/rich-text-html";
+import { config } from "@/shared/lib/config";
+import { fetchLookupForInfinite, hydrateLookupItem } from "@/shared/lib/utils";
+import { FormInfiniteCombobox } from "@/components/kit";
+import { PresignedFileUpload } from "@/shared/ui/PresignedFileUpload";
 import { LineItemsEditor } from "./LineItemsEditor";
 import { PaymentScheduleEditor } from "./PaymentScheduleEditor";
 
@@ -73,8 +76,13 @@ const QuotationFormSchema = z
     notes: z.string().optional(),
     internalNotes: z.string().optional(),
     showSignature: z.boolean().default(true),
+    documentMode: z.enum(["builtin", "attachment"]).default("builtin"),
     paymentSchedule: z.array(PaymentScheduleSchema).min(1),
-    lines: z.array(LineSchema).min(1, "ຕ້ອງມີຢ່າງໜ້ອຍ 1 ລາຍການ"),
+    lines: z.array(LineSchema).default([]),
+    attachmentFileKey: z.string().optional().nullable(),
+    attachmentFileName: z.string().optional().nullable(),
+    attachmentContentType: z.string().optional().nullable(),
+    contractTotal: z.number().int().min(0).default(0),
   })
   .superRefine((vals, ctx) => {
     if (paymentScheduleTotalPercent(vals.paymentSchedule) !== 100) {
@@ -82,6 +90,32 @@ const QuotationFormSchema = z
         code: z.ZodIssueCode.custom,
         path: ["paymentSchedule"],
         message: "Milestone percentages must total 100%",
+      });
+    }
+
+    if (vals.documentMode === "builtin") {
+      if (vals.lines.length < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["lines"],
+          message: "ຕ້ອງມີຢ່າງໜ້ອຍ 1 ລາຍການ",
+        });
+      }
+      return;
+    }
+
+    if (!vals.attachmentFileKey?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["attachmentFileKey"],
+        message: "ຕ້ອງອັບໂຫຼດເອກະສານ",
+      });
+    }
+    if (vals.contractTotal <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contractTotal"],
+        message: "ຕ້ອງໃສ່ຍອດລວມສັນຍາ",
       });
     }
   });
@@ -110,6 +144,7 @@ export function QuotationForm({
       notes: "",
       internalNotes: "",
       showSignature: true,
+      documentMode: "builtin",
       paymentSchedule: DEFAULT_PAYMENT_SCHEDULE.map((item) => ({ ...item })),
       lines: [
         {
@@ -121,11 +156,18 @@ export function QuotationForm({
           children: [],
         },
       ],
+      attachmentFileKey: null,
+      attachmentFileName: null,
+      attachmentContentType: null,
+      contractTotal: 0,
       ...initialValues,
     },
   });
 
   const currency = methods.watch("currency");
+  const documentMode = methods.watch("documentMode");
+  const attachmentFileKey = methods.watch("attachmentFileKey");
+  const attachmentFileName = methods.watch("attachmentFileName");
 
   return (
     <FormRoot<QuotationFormValues>
@@ -172,18 +214,80 @@ export function QuotationForm({
             name="showSignature"
             label="ສະແດງຊ່ອງລາຍເຊັນໃນ PDF"
             hint="ປິດໄວ້ຖ້າບໍ່ຕ້ອງການພື້ນທີ່ເຊັນໃນເອກະສານ"
+            disabled={readOnly}
           />
         </div>
       </div>
 
       <div className="mt-6">
-        <h3 className="mb-2 font-semibold text-sm">ລາຍການ</h3>
-        <LineItemsEditor
-          name="lines"
-          control={methods.control}
-          currency={currency}
+        <FormToggleGroup
+          name="documentMode"
+          label="ຮູບແບບເອກະສານ"
+          hint="ເລືອກສ້າງລາຍການໃນລະບົບ ຫຼື ອັບໂຫຼດໄຟລ໌ສຳເລັດຮູບ"
+          options={[
+            { value: "builtin", label: "ສ້າງໃນລະບົບ" },
+            { value: "attachment", label: "ອັບໂຫຼດໄຟລ໌" },
+          ]}
         />
       </div>
+
+      {documentMode === "builtin" ? (
+        <div className="mt-6">
+          <h3 className="mb-2 font-semibold text-sm">ລາຍການ</h3>
+          <LineItemsEditor
+            name="lines"
+            control={methods.control}
+            currency={currency}
+          />
+        </div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          <div>
+            <h3 className="mb-2 font-semibold text-sm">ໄຟລ໌ເອກະສານ</h3>
+            {!readOnly ? (
+              <PresignedFileUpload
+                keyPrefix="uploads/quotations"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                buttonLabel="ອັບໂຫຼດເອກະສານ"
+                hint="ຮອງຮັບ PDF, DOC, DOCX — ໃຊ້ເອກະສານທີ່ສ້າງສຳເລັດຮູບແທນລາຍການໃນລະບົບ"
+                onSuccess={(key, file) => {
+                  methods.setValue("attachmentFileKey", key, {
+                    shouldValidate: true,
+                  });
+                  methods.setValue("attachmentFileName", file.name);
+                  methods.setValue(
+                    "attachmentContentType",
+                    file.type || null,
+                  );
+                }}
+              />
+            ) : null}
+            {attachmentFileKey ? (
+              <div className="mt-2 space-y-1 text-sm">
+                <p className="text-muted-foreground">
+                  ໄຟລ໌: {attachmentFileName ?? attachmentFileKey}
+                </p>
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <a
+                    href={`${config.apiUrl}/files/${attachmentFileKey}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ເບິ່ງເອກະສານ
+                  </a>
+                </Button>
+              </div>
+            ) : null}
+          </div>
+          <FormAmountInput
+            name="contractTotal"
+            label="ຍອດລວມສັນຍາ"
+            currency={currency}
+            requiredMark
+            hint="ຍອດເຕັມຂອງໃບສະເໜີລາຄາ — ຈະໃຊ້ຄິດ milestone ເວລາອອກ Invoice"
+          />
+        </div>
+      )}
 
       <div className="mt-6">
         <PaymentScheduleEditor

@@ -5,6 +5,7 @@ import { OffsetPageQuerySchema } from "@/shared/contracts/base";
 import {
   CreateReleaseSchema,
   IdParamSchema,
+  ReplaceReleaseFileSchema,
   UpdateReleaseSchema,
 } from "../contracts";
 import { getReleaseById } from "../repo/releases/get-by-id";
@@ -12,9 +13,11 @@ import { listReleases } from "../repo/releases/list";
 import {
   archiveReleaseService,
   createReleaseService,
+  deleteReleaseService,
   publishReleaseService,
   ReleaseConflictError,
   ReleaseValidationError,
+  replaceReleaseFileService,
   updateReleaseService,
 } from "../service/releases";
 
@@ -89,6 +92,23 @@ export const releasesRoutes = new Elysia({ prefix: "/releases" })
     },
   )
   .post(
+    "/:id/replace-file",
+    async ({ db, params, body, status }) => {
+      try {
+        const updated = await replaceReleaseFileService(db, params.id, body);
+        if (!updated) return status(404, { error: "NOT_FOUND" });
+        return updated;
+      } catch (e) {
+        return mapError(e, status);
+      }
+    },
+    {
+      beforeHandle: requirePermission("distribution:write"),
+      params: IdParamSchema,
+      body: ReplaceReleaseFileSchema,
+    },
+  )
+  .post(
     "/:id/publish",
     async ({ db, params, status }) => {
       try {
@@ -111,6 +131,22 @@ export const releasesRoutes = new Elysia({ prefix: "/releases" })
         const updated = await archiveReleaseService(db, params.id);
         if (!updated) return status(404, { error: "NOT_FOUND" });
         return updated;
+      } catch (e) {
+        return mapError(e, status);
+      }
+    },
+    {
+      beforeHandle: requirePermission("distribution:write"),
+      params: IdParamSchema,
+    },
+  )
+  .delete(
+    "/:id",
+    async ({ db, params, status }) => {
+      try {
+        const result = await deleteReleaseService(db, params.id);
+        if (!result) return status(404, { error: "NOT_FOUND" });
+        return result.deleted;
       } catch (e) {
         return mapError(e, status);
       }

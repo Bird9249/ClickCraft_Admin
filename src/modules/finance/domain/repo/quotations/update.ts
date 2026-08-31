@@ -23,19 +23,40 @@ export async function updateQuotation(
     updates.paymentSchedule = input.paymentSchedule;
   if (input.showSignature !== undefined)
     updates.showSignature = input.showSignature;
+  if (input.documentMode !== undefined) updates.documentMode = input.documentMode;
+  if (input.attachmentFileKey !== undefined)
+    updates.attachmentFileKey = input.attachmentFileKey;
+  if (input.attachmentFileName !== undefined)
+    updates.attachmentFileName = input.attachmentFileName;
+  if (input.attachmentContentType !== undefined)
+    updates.attachmentContentType = input.attachmentContentType;
+  if (input.contractTotal !== undefined) {
+    updates.subtotal = input.contractTotal;
+    updates.taxAmount = 0;
+    updates.total = input.contractTotal;
+  }
 
-  if (input.lines !== undefined) {
-    const totals = computeTotals(input.lines);
+  const totals =
+    input.documentMode === "builtin" && input.lines !== undefined
+      ? computeTotals(input.lines)
+      : null;
+  if (totals) {
     updates.subtotal = totals.subtotal;
     updates.taxAmount = totals.taxAmount;
     updates.total = totals.total;
+  }
 
+  if (input.documentMode === "attachment" || input.lines !== undefined) {
     await client
       .delete(schema.quotationLine)
       .where(eq(schema.quotationLine.quotationId, id));
 
-    if (input.lines.length > 0) {
-      await insertQuotationLines(id, input.lines, client);
+    const mode = input.documentMode;
+    const lines =
+      mode === "attachment" ? [] : (input.lines ?? []);
+
+    if (lines.length > 0) {
+      await insertQuotationLines(id, lines, client);
     }
   }
 

@@ -8,7 +8,7 @@ import {
 import type { ReleasesListResult } from "@/modules/distribution/domain/types";
 import { formatDateLocal } from "@/shared/lib/date-time";
 import { RowActions } from "@/shared/ui/RowActions";
-import { useArchiveRelease, usePublishRelease } from "../api/queries";
+import { useArchiveRelease, useDeleteRelease, usePublishRelease } from "../api/queries";
 import { ReleaseStatusBadge } from "./ReleaseStatusBadge";
 
 type Row = ReleasesListResult["data"][number];
@@ -25,6 +25,7 @@ type Props = {
   sortOrder?: "asc" | "desc";
   onSortingChange: (id: string, desc: boolean) => void;
   onManageLinks?: (row: Row) => void;
+  onReplaceFile?: (row: Row) => void;
 };
 
 function formatBytes(bytes: number): string {
@@ -44,9 +45,11 @@ export function ReleasesTable({
   sortOrder,
   onSortingChange,
   onManageLinks,
+  onReplaceFile,
 }: Props) {
   const publishRelease = usePublishRelease();
   const archiveRelease = useArchiveRelease();
+  const deleteRelease = useDeleteRelease();
 
   const columns = useMemo<TanstackReactTable.ColumnDef<Row>[]>(
     () => [
@@ -125,6 +128,24 @@ export function ReleasesTable({
             });
           }
 
+          if (canWrite && row.original.status !== "archived" && onReplaceFile) {
+            actions.push({
+              label: "ແທນທີ່ໄຟລ໌",
+              variant: "outline",
+              onClick: async () => {
+                if (row.original.status === "published") {
+                  const ok = await confirm({
+                    title: "ແທນທີ່ໄຟລ໌ APK?",
+                    description:
+                      "ໄຟລ໌ເກົ່າຈະຖືກລຶບອອກຈາກ storage — ລິ້ງແບ່ງປັນຈະດາວໂຫຼດ APK ໃໝ່",
+                  });
+                  if (!ok) return;
+                }
+                onReplaceFile(row.original);
+              },
+            });
+          }
+
           if (canWrite && row.original.status === "draft") {
             actions.push({
               label: "ເຜີຍແຜ່",
@@ -152,12 +173,31 @@ export function ReleasesTable({
             });
           }
 
+          if (canWrite) {
+            actions.push({
+              label: "ລຶບ",
+              variant: "destructive",
+              onClick: async () => {
+                const isPublished = row.original.status === "published";
+                const ok = await confirm({
+                  title: "ລຶບ release?",
+                  description: isPublished
+                    ? `${row.original.version} (${row.original.buildNumber}) — ລິ້ງແບ່ງປັນ ແລະ ໄຟລ໌ APK ຈະຖືກລຶບຖາວອນ`
+                    : `${row.original.fileName} — ໄຟລ໌ APK ຈະຖືກລຶບຈາກ storage ພ້ອມກັນ`,
+                  actionText: "ລຶບ",
+                  ActionProps: { variant: "destructive" },
+                });
+                if (ok) deleteRelease.mutate(row.original.id);
+              },
+            });
+          }
+
           if (actions.length === 0) return null;
           return <RowActions actions={actions} maxInline={2} />;
         },
       },
     ],
-    [canWrite, publishRelease, archiveRelease, onManageLinks],
+    [canWrite, publishRelease, archiveRelease, deleteRelease, onManageLinks, onReplaceFile],
   );
 
   return (

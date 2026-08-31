@@ -44,6 +44,15 @@ export const UpdateReleaseSchema = z.object({
 });
 export type UpdateReleaseDTO = z.infer<typeof UpdateReleaseSchema>;
 
+export const ReplaceReleaseFileSchema = z.object({
+  fileKey: z.string().trim().min(1).max(1024),
+  fileName: apkFileName,
+  fileSize: z.number().int().positive().max(5_000_000_000),
+  contentType: z.string().trim().max(200).optional().nullable(),
+  checksumSha256: z.string().trim().max(128).optional().nullable(),
+});
+export type ReplaceReleaseFileDTO = z.infer<typeof ReplaceReleaseFileSchema>;
+
 export const IdParamSchema = z.object({ id: z.string().min(1) });
 export type IdParamDTO = z.infer<typeof IdParamSchema>;
 

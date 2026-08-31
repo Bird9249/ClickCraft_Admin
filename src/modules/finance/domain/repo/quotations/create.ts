@@ -4,11 +4,20 @@ import type { CreateQuotationDTO } from "../../contracts";
 import { computeTotals } from "../service-helpers";
 import { insertQuotationLines } from "../line-helpers";
 
+function resolveQuotationTotals(input: CreateQuotationDTO) {
+  if (input.documentMode === "attachment") {
+    const total = input.contractTotal ?? 0;
+    return { subtotal: total, taxAmount: 0, total };
+  }
+  return computeTotals(input.lines ?? []);
+}
+
 export async function createQuotation(
   input: CreateQuotationDTO & { number: string; createdBy?: string | null },
   client: DbTransaction,
 ) {
-  const totals = computeTotals(input.lines);
+  const totals = resolveQuotationTotals(input);
+  const lines = input.documentMode === "attachment" ? [] : (input.lines ?? []);
 
   const [qt] = await client
     .insert(schema.quotation)
@@ -27,6 +36,10 @@ export async function createQuotation(
       internalNotes: input.internalNotes ?? null,
       sourcePresetId: input.sourcePresetId ?? null,
       paymentSchedule: input.paymentSchedule ?? null,
+      documentMode: input.documentMode ?? "builtin",
+      attachmentFileKey: input.attachmentFileKey ?? null,
+      attachmentFileName: input.attachmentFileName ?? null,
+      attachmentContentType: input.attachmentContentType ?? null,
       showSignature: input.showSignature ?? true,
       createdBy: input.createdBy ?? null,
     })
@@ -34,8 +47,8 @@ export async function createQuotation(
 
   if (!qt) throw new Error("Failed to create quotation");
 
-  if (input.lines.length > 0) {
-    await insertQuotationLines(qt.id, input.lines, client);
+  if (lines.length > 0) {
+    await insertQuotationLines(qt.id, lines, client);
   }
 
   return qt;

@@ -10,6 +10,7 @@ import type { OffsetPageQueryDTO } from "@/shared/contracts/base";
 import { findCondition } from "@/shared/contracts/query-helpers";
 import { useReleasesQuery } from "../api/queries";
 import { ManageAppsDialog } from "../ui/ManageAppsDialog";
+import { ReplaceReleaseFileDialog } from "../ui/ReplaceReleaseFileDialog";
 import { ReleasesFilter } from "../ui/ReleasesFilter";
 import { ReleasesTable } from "../ui/ReleasesTable";
 import { ShareLinksPanel } from "../ui/ShareLinksPanel";
@@ -25,6 +26,7 @@ export function DistributionPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [appsOpen, setAppsOpen] = useState(false);
   const [linksRelease, setLinksRelease] = useState<ReleaseRow | null>(null);
+  const [replaceRelease, setReplaceRelease] = useState<ReleaseRow | null>(null);
 
   const selectedAppId =
     (findCondition(search.filters, "appId")?.value as string | undefined) ??
@@ -87,6 +89,7 @@ export function DistributionPage() {
               })
             }
             onManageLinks={canRead ? setLinksRelease : undefined}
+            onReplaceFile={canWrite ? setReplaceRelease : undefined}
           />
         </div>
       </Main>
@@ -112,6 +115,12 @@ export function DistributionPage() {
           canWrite={canWrite}
         />
       )}
+      <ReplaceReleaseFileDialog
+        release={replaceRelease}
+        onOpenChange={(open) => {
+          if (!open) setReplaceRelease(null);
+        }}
+      />
     </>
   );
 }

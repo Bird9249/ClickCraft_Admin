@@ -8,6 +8,11 @@ export async function updateRelease(
     changelog?: string | null;
     status?: string;
     publishedAt?: Date | null;
+    fileKey?: string;
+    fileName?: string;
+    fileSize?: number;
+    contentType?: string | null;
+    checksumSha256?: string | null;
     updatedAt?: Date;
   },
   client: DbTransaction,

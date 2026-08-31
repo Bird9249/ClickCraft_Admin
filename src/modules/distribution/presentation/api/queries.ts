@@ -4,6 +4,7 @@ import type {
   CreateAppDTO,
   CreateReleaseDTO,
   CreateShareLinkDTO,
+  ReplaceReleaseFileDTO,
 } from "@/modules/distribution/domain/contracts";
 import type { OffsetPageQueryDTO } from "@/shared/contracts/base";
 import { distributionApi, shareLinkAbsoluteUrl } from "./client";
@@ -63,6 +64,25 @@ export function useCreateRelease() {
   });
 }
 
+export function useReplaceReleaseFile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: ReplaceReleaseFileDTO;
+    }) => distributionApi.replaceReleaseFile(id, input),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: distributionKeys.all });
+      qc.invalidateQueries({ queryKey: distributionKeys.release(id) });
+      toast.success("ແທນທີ່ໄຟລ໌ APK ແລ້ວ");
+    },
+    onError: () => toast.error("ແທນທີ່ໄຟລ໌ APK ບໍ່ສໍເລັດ"),
+  });
+}
+
 export function usePublishRelease() {
   const qc = useQueryClient();
   return useMutation({
@@ -84,6 +104,18 @@ export function useArchiveRelease() {
       toast.success("ເກັບໄວ້ release ແລ້ວ");
     },
     onError: () => toast.error("ເກັບໄວ້ release ບໍ່ສໍເລັດ"),
+  });
+}
+
+export function useDeleteRelease() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => distributionApi.deleteRelease(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: distributionKeys.all });
+      toast.success("ລຶບ release ແລ້ວ");
+    },
+    onError: () => toast.error("ລຶບ release ບໍ່ສໍເລັດ"),
   });
 }
 

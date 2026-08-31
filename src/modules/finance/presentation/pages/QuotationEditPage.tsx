@@ -16,7 +16,8 @@ import {
   useUpdateQuotation,
 } from "../api/queries";
 import { CreateInvoicesDialog } from "../ui/CreateInvoicesDialog";
-import { mapApiLinesToForm, mapFormLinesToApi } from "../lib/line-form";
+import { buildQuotationPayload } from "../lib/quotation-form-payload";
+import { mapApiLinesToForm } from "../lib/line-form";
 import { QuotationForm } from "../ui/QuotationForm";
 
 export function QuotationEditPage() {
@@ -158,8 +159,15 @@ export function QuotationEditPage() {
                   notes: data.notes ?? "",
                   internalNotes: data.internalNotes ?? "",
                   showSignature: data.showSignature ?? true,
+                  documentMode:
+                    (data.documentMode as "builtin" | "attachment") ??
+                    "builtin",
                   paymentSchedule: normalizePaymentSchedule(data.paymentSchedule),
                   lines: mapApiLinesToForm(data.lines ?? []),
+                  attachmentFileKey: data.attachmentFileKey ?? null,
+                  attachmentFileName: data.attachmentFileName ?? null,
+                  attachmentContentType: data.attachmentContentType ?? null,
+                  contractTotal: data.total ?? 0,
                 }}
                 onSubmit={async (vals) => {
                   try {
@@ -170,20 +178,7 @@ export function QuotationEditPage() {
                       toast.success("Saved");
                       return;
                     }
-                    await updateQuotation.mutateAsync({
-                      customerId: vals.customerId,
-                      issueDate: new Date(vals.issueDate),
-                      validUntil: vals.validUntil
-                        ? new Date(vals.validUntil)
-                        : null,
-                      currency: vals.currency,
-                      taxNote: vals.taxNote || null,
-                      notes: vals.notes || null,
-                      internalNotes: vals.internalNotes || null,
-                      showSignature: vals.showSignature,
-                      paymentSchedule: vals.paymentSchedule,
-                      lines: mapFormLinesToApi(vals.lines),
-                    });
+                    await updateQuotation.mutateAsync(buildQuotationPayload(vals));
                     toast.success("Saved");
                   } catch {
                     // handled by mutation

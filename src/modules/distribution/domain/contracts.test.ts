@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CreateReleaseSchema } from "./contracts";
+import { CreateReleaseSchema, ReplaceReleaseFileSchema } from "./contracts";
 
 describe("CreateReleaseSchema", () => {
   test("accepts android apk release", () => {
@@ -35,6 +35,26 @@ describe("CreateReleaseSchema", () => {
       buildNumber: "1",
       fileKey: "uploads/distribution/clickcraft/ios/1.0.0-1/app.apk",
       fileName: "app.apk",
+      fileSize: 1000,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ReplaceReleaseFileSchema", () => {
+  test("accepts apk file payload", () => {
+    const parsed = ReplaceReleaseFileSchema.parse({
+      fileKey: "uploads/distribution/clickcraft/android/1.0.0-1/app.apk",
+      fileName: "app-release.apk",
+      fileSize: 12_345_678,
+    });
+    expect(parsed.fileName).toBe("app-release.apk");
+  });
+
+  test("rejects non-apk fileName", () => {
+    const result = ReplaceReleaseFileSchema.safeParse({
+      fileKey: "uploads/distribution/clickcraft/android/1.0.0-1/app.ipa",
+      fileName: "app.ipa",
       fileSize: 1000,
     });
     expect(result.success).toBe(false);

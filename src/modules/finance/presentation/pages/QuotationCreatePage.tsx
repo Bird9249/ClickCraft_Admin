@@ -4,7 +4,7 @@ import { Header } from "@/app/layout/Header";
 import { Main } from "@/app/layout/Main";
 import { Button, toast } from "@/components/kit";
 import { useCreateQuotation } from "../api/queries";
-import { mapFormLinesToApi } from "../lib/line-form";
+import { buildQuotationPayload } from "../lib/quotation-form-payload";
 import { QuotationForm } from "../ui/QuotationForm";
 
 export function QuotationCreatePage() {
@@ -35,20 +35,8 @@ export function QuotationCreatePage() {
           <QuotationForm
             onSubmit={async (vals) => {
               try {
-                await createQuotation.mutateAsync({
-                  customerId: vals.customerId,
-                  issueDate: new Date(vals.issueDate),
-                  validUntil: vals.validUntil
-                    ? new Date(vals.validUntil)
-                    : null,
-                  currency: vals.currency,
-                  taxNote: vals.taxNote || null,
-                  notes: vals.notes || null,
-                  internalNotes: vals.internalNotes || null,
-                  showSignature: vals.showSignature,
-                  paymentSchedule: vals.paymentSchedule,
-                  lines: mapFormLinesToApi(vals.lines),
-                });
+                const payload = buildQuotationPayload(vals);
+                await createQuotation.mutateAsync(payload);
                 toast.success("ສ້າງໃບສະເໜີລາຄາສໍາເລັດ");
                 nav({ to: "/app/quotations" });
               } catch {

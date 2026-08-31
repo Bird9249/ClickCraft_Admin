@@ -2,8 +2,7 @@ import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
 import { eq } from "drizzle-orm";
 import type { CreateFromQuotationDTO, CreateInvoiceDTO, UpdateInvoiceDTO } from "../contracts";
-import { toLineInputs } from "../line-tree";
-import { scaleLineForMilestone } from "../line-pricing";
+import { invoiceLinesFromQuotation } from "../quotation-invoice-lines";
 import { createInvoice } from "../repo/invoices/create";
 import { getInvoiceById } from "../repo/invoices/get-by-id";
 import { updateInvoice } from "../repo/invoices/update";
@@ -138,9 +137,7 @@ export async function createInvoicesFromQuotationService(
         notes: conditionNote ?? qt.notes ?? null,
         showSignature: qt.showSignature ?? true,
         createdBy: actorId ?? null,
-        lines: toLineInputs(qt.lines).map((l) =>
-          scaleLineForMilestone(l, milestone.percent),
-        ),
+        lines: invoiceLinesFromQuotation(qt, milestone.percent),
       },
       client,
     );

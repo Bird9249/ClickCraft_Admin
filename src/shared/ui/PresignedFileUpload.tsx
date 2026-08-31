@@ -13,8 +13,8 @@ export type PresignedFileUploadProps = {
   keyPrefix?: string;
   /** accept attribute ของ input เช่น "image/*" */
   accept?: string;
-  /** callback เมื่ออัปโหลดสำเร็จ (ได้ key ใน bucket) */
-  onSuccess?: (key: string) => void;
+  /** callback เมื่ออัปโหลดสำเร็จ (ได้ key ใน bucket + ไฟล์ต้นทาง) */
+  onSuccess?: (key: string, file: File) => void;
   /** callback เมื่อเกิดข้อผิดพลาด */
   onError?: (error: Error) => void;
   /** ป้ายชื่อปุ่ม */
@@ -60,7 +60,7 @@ export function PresignedFileUpload({
 
         await uploadFileToPresignedUrl(uploadUrl, file, { contentType });
         setLastKey(key);
-        onSuccess?.(key);
+        onSuccess?.(key, file);
       } catch (e) {
         const err = e instanceof Error ? e : new Error(String(e));
         setError(err.message);

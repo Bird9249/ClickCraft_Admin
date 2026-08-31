@@ -47,6 +47,13 @@ export const quotationsRoutes = new Elysia()
     async ({ db, params, status, set }) => {
       const qt = await getQuotationById(params.id, db);
       if (!qt) return status(404, { error: "NOT_FOUND" });
+
+      if (qt.documentMode === "attachment" && qt.attachmentFileKey) {
+        set.status = 302;
+        set.headers["Location"] = `/api/files/${qt.attachmentFileKey}`;
+        return;
+      }
+
       const html = renderQuotationHtml({
         number: qt.number,
         issueDate: qt.issueDate,
