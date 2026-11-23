@@ -10,6 +10,15 @@ import {
   Input,
 } from "@/components/kit";
 import { Textarea } from "@/components/ui/textarea";
+import type { ReleasePlatform } from "@/modules/distribution/domain/contracts";
+import {
+  distributionStorageSegment,
+  distributionUploadAccept,
+  distributionUploadHint,
+  resolveDistributionContentType,
+  validateDistributionFileClient,
+  validateDistributionFileName,
+} from "@/modules/distribution/domain/release-file-policy";
 import { DEFAULT_CHUNK_SIZE } from "@/shared/lib/chunk-upload-s3";
 import { sha256Hex } from "@/shared/lib/sha256-file";
 import { ChunkFileUpload } from "@/shared/ui/ChunkFileUpload";
@@ -37,6 +46,7 @@ export function UploadReleaseDialog({
   const createRelease = useCreateRelease();
   const apps = appsQuery.data?.data ?? [];
 
+  const [platform, setPlatform] = useState<ReleasePlatform>("android");
   const [appId, setAppId] = useState("");
   const [version, setVersion] = useState("");
   const [buildNumber, setBuildNumber] = useState("");
@@ -50,6 +60,7 @@ export function UploadReleaseDialog({
 
   useEffect(() => {
     if (!open) return;
+    setPlatform("android");
     setAppId(defaultAppId || apps[0]?.id || "");
     setVersion("");
     setBuildNumber("");
@@ -61,6 +72,15 @@ export function UploadReleaseDialog({
     setChecksumSha256(null);
     setHashing(false);
   }, [open, defaultAppId, apps]);
+
+  const onPlatformChange = (next: ReleasePlatform) => {
+    setPlatform(next);
+    setFileKey("");
+    setFileName("");
+    setFileSize(0);
+    setContentType(null);
+    setChecksumSha256(null);
+  };
 
   const selectedApp = apps.find((a) => a.id === appId) ?? null;
   const appOptions = useMemo(
@@ -76,15 +96,19 @@ export function UploadReleaseDialog({
     const slug = selectedApp?.slug ?? "app";
     const ver = version.trim() || "pending";
     const build = buildNumber.trim() || "pending";
-    return `uploads/distribution/${slug}/android/${ver}-${build}`;
-  }, [selectedApp?.slug, version, buildNumber]);
+    const segment = distributionStorageSegment(platform);
+    return `uploads/distribution/${slug}/${segment}/${ver}-${build}`;
+  }, [selectedApp?.slug, version, buildNumber, platform]);
+
+  const fileValid =
+    !!fileName && validateDistributionFileName(platform, fileName) === null;
 
   const canSubmit =
     !!selectedApp &&
     version.trim().length > 0 &&
     buildNumber.trim().length > 0 &&
     !!fileKey &&
-    fileName.toLowerCase().endsWith(".apk") &&
+    fileValid &&
     fileSize > 0 &&
     !hashing &&
     !createRelease.isPending;
@@ -93,7 +117,7 @@ export function UploadReleaseDialog({
     if (!selectedApp || !canSubmit) return;
     await createRelease.mutateAsync({
       appId: selectedApp.id,
-      platform: "android",
+      platform,
       version: version.trim(),
       buildNumber: buildNumber.trim(),
       fileKey,
@@ -106,17 +130,41 @@ export function UploadReleaseDialog({
     onOpenChange(false);
   };
 
+  const fileLabel = platform === "android" ? "ໄຟລ໌ APK" : "ໄຟລ໌ (ZIP / ທົ່ວໄປ)";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>ອັບໂຫຼດ Android release</DialogTitle>
+          <DialogTitle>ອັບໂຫຼດ release</DialogTitle>
           <DialogDescription>
-            ຮອງຮັບແຕ່ໄຟລ໌ .apk — ຄິດໄລ່ SHA-256 ຫຼັງອັບໂຫຼດເພື່ອກວດສອບ
+            Android (.apk), ZIP ຫຼື ໄຟລ໌ທົ່ວໄປ — ຄິດໄລ່ SHA-256 ຫຼັງອັບໂຫຼດ
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          <div className="space-y-1">
+            <p className="font-medium text-sm">ປະເພດ</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={platform === "android" ? "default" : "outline"}
+                onClick={() => onPlatformChange("android")}
+              >
+                Android (APK)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={platform === "file" ? "default" : "outline"}
+                onClick={() => onPlatformChange("file")}
+              >
+                ZIP / ໄຟລ໌ທົ່ວໄປ
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-1">
             <p className="font-medium text-sm">ແອັບ</p>
             <SimpleSelect
@@ -159,25 +207,26 @@ export function UploadReleaseDialog({
           </div>
 
           <div className="space-y-1">
-            <p className="font-medium text-sm">ໄຟລ໌ APK</p>
+            <p className="font-medium text-sm">{fileLabel}</p>
             <ChunkFileUpload
+              key={`${platform}-${keyPrefix}`}
               keyPrefix={keyPrefix}
               chunkSize={DEFAULT_CHUNK_SIZE}
-              accept=".apk,application/vnd.android.package-archive"
-              buttonLabel="ເລືອກໄຟລ໌ APK"
-              hint="ລາກແລະວາງ .apk ຫຼື ກົດເພື່ອເລືອກ — ແບ່ງ chunk ລະ 5MB · ແນະນຳໃຫ້ກໍຳນົດ version/build ກ່ອນ"
+              accept={distributionUploadAccept(platform)}
+              buttonLabel={
+                platform === "android" ? "ເລືອກໄຟລ໌ APK" : "ເລືອກໄຟລ໌"
+              }
+              hint={distributionUploadHint(platform)}
               disabled={hashing || createRelease.isPending}
               validateFile={(file) =>
-                file.name.toLowerCase().endsWith(".apk")
-                  ? null
-                  : "ຮອງຮັບແຕ່ໄຟລ໌ .apk"
+                validateDistributionFileClient(platform, file)
               }
               onSuccess={async (key, file) => {
                 setFileKey(key);
                 setFileName(file.name);
                 setFileSize(file.size);
                 setContentType(
-                  file.type || "application/vnd.android.package-archive",
+                  resolveDistributionContentType(file.name, file.type) ?? null,
                 );
                 setChecksumSha256(null);
                 setHashing(true);

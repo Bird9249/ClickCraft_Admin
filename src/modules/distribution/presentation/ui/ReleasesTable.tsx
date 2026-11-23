@@ -5,6 +5,7 @@ import {
   DataTable,
   type TanstackReactTable,
 } from "@/components/kit";
+import { platformDisplayLabel } from "@/modules/distribution/domain/release-file-policy";
 import type { ReleasesListResult } from "@/modules/distribution/domain/types";
 import { formatDateLocal } from "@/shared/lib/date-time";
 import { RowActions } from "@/shared/ui/RowActions";
@@ -67,7 +68,7 @@ export function ReleasesTable({
         id: "platform",
         header: "ແພລດຟອມ",
         cell: ({ row }) => (
-          <span className="text-sm uppercase">{row.original.platform}</span>
+          <span className="text-sm">{platformDisplayLabel(row.original.platform)}</span>
         ),
         size: 90,
       },

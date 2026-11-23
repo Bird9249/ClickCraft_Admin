@@ -47,7 +47,7 @@ export function DistributionPage() {
           <div>
             <h2 className="font-bold text-2xl tracking-tight">ຈ່າຍແຈກແອັບ</h2>
             <p className="text-muted-foreground">
-              ອັບໂຫຼດ Android build, ເຜີຍແຜ່ ແລະ ແບ່ງປັນລິ້ງດາວໂຫຼດໃຫ້ຜູ້ທົດສອບ
+              ອັບໂຫຼດ APK, ZIP ຫຼື ໄຟລ໌ທົ່ວໄປ — ເຜີຍແຜ່ ແລະ ແບ່ງປັນລິ້ງດາວໂຫຼດ
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -58,7 +58,7 @@ export function DistributionPage() {
             {canWrite && (
               <Button onClick={() => setUploadOpen(true)}>
                 <PlusIcon className="h-4 w-4" />
-                ອັບໂຫຼດ APK
+                ອັບໂຫຼດ release
               </Button>
             )}
           </div>

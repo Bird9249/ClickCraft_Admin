@@ -4,6 +4,7 @@ import symbolUrl from "@/assets/brand/symbol.webp";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/kit";
 import { cn } from "@/lib/utils";
+import { publicDownloadButtonLabel, platformDisplayLabel } from "@/modules/distribution/domain/release-file-policy";
 import { formatDateLocal } from "@/shared/lib/date-time";
 import { distributionApi } from "../api/client";
 import { usePublicShareMeta } from "../api/queries";
@@ -73,7 +74,9 @@ export function PublicDownloadPage() {
           />
 
           <p className="font-semibold text-primary text-xs uppercase tracking-[0.22em]">
-            Android
+            {meta.data
+              ? platformDisplayLabel(meta.data.platform)
+              : "ດາວໂຫຼດ"}
           </p>
 
           <h1 className="mt-3 max-w-md text-balance font-bold text-3xl text-foreground tracking-tight sm:text-4xl">
@@ -112,7 +115,10 @@ export function PublicDownloadPage() {
                   }}
                 >
                   <Download className="h-5 w-5" />
-                  ດາວໂຫຼດ APK
+                  {publicDownloadButtonLabel(
+                    meta.data.platform,
+                    meta.data.fileName,
+                  )}
                 </Button>
               </div>
             </>
@@ -176,10 +182,12 @@ export function PublicDownloadPage() {
               </div>
             )}
 
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              ໃນ Android ອາດຕ້ອງອະນຸຍາດຕິດຕັ້ງຈາກແຫຼ່ງທີ່ບໍ່ຮູ້ຈັກ browser ຫຼື ໄຟລ໌ manager
-              ກ່ອນຕິດຕັ້ງ APK.
-            </p>
+            {meta.data.platform === "android" ? (
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                ໃນ Android ອາດຕ້ອງອະນຸຍາດຕິດຕັ້ງຈາກແຫຼ່ງທີ່ບໍ່ຮູ້ຈັກ browser ຫຼື ໄຟລ໌ manager
+                ກ່ອນຕິດຕັ້ງ APK.
+              </p>
+            ) : null}
           </div>
         )}
       </main>

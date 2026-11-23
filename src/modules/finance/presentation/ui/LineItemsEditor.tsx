@@ -1,10 +1,23 @@
-import { CornerDownRightIcon, PlusIcon, TrashIcon } from "lucide-react";
+import {
+  CornerDownRightIcon,
+  FileDownIcon,
+  FileUpIcon,
+  PlusIcon,
+  TrashIcon,
+} from "lucide-react";
+import { useRef } from "react";
 import type { Control } from "react-hook-form";
 import { Controller, useFieldArray, useWatch } from "react-hook-form";
-import { Button } from "@/components/kit";
+import { Button, confirm, toast } from "@/components/kit";
 import {
-  MAX_SUB_ITEM_DEPTH,
+  downloadLineItemsJsonTemplate,
+  type LineItemsJson,
+  parseLineItemsJsonText,
+  toFormLinesFromJson,
+} from "@/modules/finance/domain/line-items-json";
+import {
   lineGroupAmount,
+  MAX_SUB_ITEM_DEPTH,
 } from "@/modules/finance/domain/line-pricing";
 import { LineDescriptionField } from "./LineDescriptionField";
 
@@ -150,7 +163,7 @@ function SubItemsEditor({
 
   return (
     <div
-      className="space-y-2 border-l-2 border-muted pl-3"
+      className="space-y-2 border-muted border-l-2 pl-3"
       style={{ marginLeft: depth > 1 ? 12 : 16 }}
     >
       {fields.map((field, childIdx) => (
@@ -298,7 +311,8 @@ function ParentLineRow({
 }
 
 export function LineItemsEditor({ name, control, currency = "LAK" }: Props) {
-  const { fields, append, remove } = useFieldArray({ control, name });
+  const { fields, append, remove, replace } = useFieldArray({ control, name });
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const watchedLines =
     (useWatch({ control, name }) as LineField[] | undefined) ?? [];
 
@@ -316,9 +330,50 @@ export function LineItemsEditor({ name, control, currency = "LAK" }: Props) {
     );
   }, 0);
 
+  const importFromJsonFile = async (file: File) => {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      toast.error("ອ່ານໄຟລ໌ບໍ່ສຳເລັດ");
+      return;
+    }
+
+    let doc: LineItemsJson;
+    try {
+      doc = parseLineItemsJsonText(text);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Invalid JSON";
+      toast.error(`JSON ບໍ່ຖືກຕ້ອງ: ${message}`);
+      return;
+    }
+
+    const imported = toFormLinesFromJson(doc, fields.length);
+    let mode: "append" | "replace" = "append";
+
+    if (fields.length > 0) {
+      const replaceAll = await confirm({
+        title: "ນຳເຂົ້າລາຍການຈາກ JSON",
+        description: `ພົບ ${imported.length} ລາຍການ. ກົດ "ແທນທີ່ທັງໝົດ" ເພື່ອລຶບລາຍການເກົ່າ, ຫຼືກົດຍົກເລີກເພື່ອເພີ່ມຕໍ່.`,
+        actionText: "ແທນທີ່ທັງໝົດ",
+        ActionProps: { variant: "destructive" },
+      });
+      mode = replaceAll ? "replace" : "append";
+    }
+
+    if (mode === "replace") {
+      replace(toFormLinesFromJson(doc, 0));
+      toast.success(`ແທນທີ່ດ້ວຍ ${imported.length} ລາຍການ`);
+      return;
+    }
+
+    for (const line of imported) append(line);
+    toast.success(`ເພີ່ມ ${imported.length} ລາຍການ`);
+  };
+
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-[1fr_80px_120px_40px] gap-2 text-sm font-medium text-muted-foreground">
+      <div className="grid grid-cols-[1fr_80px_120px_40px] gap-2 font-medium text-muted-foreground text-sm">
         <span>ລາຍການ</span>
         <span className="text-right">ຈໍານວນ</span>
         <span className="text-right">ລາຄາ/ໜ່ວຍ</span>
@@ -337,26 +392,63 @@ export function LineItemsEditor({ name, control, currency = "LAK" }: Props) {
         ))}
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() =>
-          append({
-            description: "",
-            quantity: 1,
-            unitPrice: 0,
-            sortOrder: fields.length,
-            priceOn: "parent",
-            children: [],
-          })
-        }
-      >
-        <PlusIcon className="mr-1 h-4 w-4" />
-        ເພີ່ມລາຍການ
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            append({
+              description: "",
+              quantity: 1,
+              unitPrice: 0,
+              sortOrder: fields.length,
+              priceOn: "parent",
+              children: [],
+            })
+          }
+        >
+          <PlusIcon className="mr-1 h-4 w-4" />
+          ເພີ່ມລາຍການ
+        </Button>
 
-      <div className="border-t pt-2 text-right text-sm font-semibold">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => downloadLineItemsJsonTemplate()}
+        >
+          <FileDownIcon className="mr-1 h-4 w-4" />
+          ດາວໂຫຼດ template JSON
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <FileUpIcon className="mr-1 h-4 w-4" />
+          ອັບໂຫຼດ JSON
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void importFromJsonFile(file);
+          }}
+        />
+      </div>
+
+      <p className="text-muted-foreground text-xs">
+        ດາວໂຫຼດ template → ແກ້ໄຂລາຍການ → ອັບໂຫຼດ JSON ເພື່ອເພີ່ມ ຫຼື ແທນທີ່ລາຍການ
+      </p>
+
+      <div className="border-t pt-2 text-right font-semibold text-sm">
         ລວມ: {currency} {total.toLocaleString()}
       </div>
     </div>

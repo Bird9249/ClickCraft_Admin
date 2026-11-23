@@ -1,9 +1,11 @@
 import { Elysia } from "elysia";
 import { requirePermission } from "@/modules/roles/domain/http/middleware";
 import { serverContext } from "@/server/platform/http/context";
-import { CreateShareLinkSchema, IdParamSchema } from "../contracts";
+import { CreateShareLinkSchema, AddShareLinkDownloadsSchema, ExtendShareLinkExpirySchema, IdParamSchema } from "../contracts";
 import {
+  addShareLinkDownloadsService,
   createShareLinkService,
+  extendShareLinkExpiryService,
   listShareLinksService,
   revokeShareLinkService,
   ShareLinkValidationError,
@@ -46,6 +48,48 @@ export const shareLinksRoutes = new Elysia()
       beforeHandle: requirePermission("distribution:write"),
       params: IdParamSchema,
       body: CreateShareLinkSchema,
+    },
+  )
+  .post(
+    "/share-links/:id/extend-expiry",
+    async ({ db, params, body, status }) => {
+      try {
+        const updated = await extendShareLinkExpiryService(db, params.id, body);
+        if (!updated) return status(404, { error: "NOT_FOUND" });
+        return updated;
+      } catch (e) {
+        if (e instanceof ShareLinkValidationError) {
+          return status(400, { error: "VALIDATION", message: e.message });
+        }
+        const message = e instanceof Error ? e.message : String(e);
+        return status(400, { error: message });
+      }
+    },
+    {
+      beforeHandle: requirePermission("distribution:write"),
+      params: IdParamSchema,
+      body: ExtendShareLinkExpirySchema,
+    },
+  )
+  .post(
+    "/share-links/:id/add-downloads",
+    async ({ db, params, body, status }) => {
+      try {
+        const updated = await addShareLinkDownloadsService(db, params.id, body);
+        if (!updated) return status(404, { error: "NOT_FOUND" });
+        return updated;
+      } catch (e) {
+        if (e instanceof ShareLinkValidationError) {
+          return status(400, { error: "VALIDATION", message: e.message });
+        }
+        const message = e instanceof Error ? e.message : String(e);
+        return status(400, { error: message });
+      }
+    },
+    {
+      beforeHandle: requirePermission("distribution:write"),
+      params: IdParamSchema,
+      body: AddShareLinkDownloadsSchema,
     },
   )
   .post(

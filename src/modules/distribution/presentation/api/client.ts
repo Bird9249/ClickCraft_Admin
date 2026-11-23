@@ -1,7 +1,9 @@
 import type {
+  AddShareLinkDownloadsDTO,
   CreateAppDTO,
   CreateReleaseDTO,
   CreateShareLinkDTO,
+  ExtendShareLinkExpiryDTO,
   ReplaceReleaseFileDTO,
   UpdateReleaseDTO,
 } from "@/modules/distribution/domain/contracts";
@@ -58,6 +60,11 @@ export function shareLinkAbsoluteUrl(publicPath: string) {
   return `${window.location.origin}${publicPath}`;
 }
 
+/** Direct APK download URL — ใช้ใน QR เพื่อสแกนแล้วดาวน์โหลดได้ทันที */
+export function shareLinkDownloadAbsoluteUrl(token: string) {
+  return `${window.location.origin}/api/distribution/public/${encodeURIComponent(token)}/download`;
+}
+
 export const distributionApi = {
   listApps: () =>
     fetcher.get<{ data: AppsListResult }>(`${config.apiUrl}/distribution/apps`),
@@ -108,6 +115,16 @@ export const distributionApi = {
     ),
   revokeShareLink: (id: string) =>
     fetcher.post(`${config.apiUrl}/distribution/share-links/${id}/revoke`),
+  extendShareLinkExpiry: (id: string, input: ExtendShareLinkExpiryDTO) =>
+    fetcher.post<ShareLinkRow>(
+      `${config.apiUrl}/distribution/share-links/${id}/extend-expiry`,
+      input,
+    ),
+  addShareLinkDownloads: (id: string, input: AddShareLinkDownloadsDTO) =>
+    fetcher.post<ShareLinkRow>(
+      `${config.apiUrl}/distribution/share-links/${id}/add-downloads`,
+      input,
+    ),
   getPublicMeta: async (token: string) => {
     const res = await fetch(
       `${config.apiUrl}/distribution/public/${encodeURIComponent(token)}`,

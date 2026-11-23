@@ -1,5 +1,7 @@
 import type { DbTransaction } from "@/shared/types";
 import type { CreateReleaseDTO, ReplaceReleaseFileDTO, UpdateReleaseDTO } from "../contracts";
+import type { ReleasePlatform } from "../contracts";
+import { validateDistributionFileName } from "../release-file-policy";
 import { getAppById } from "../repo/apps/get-by-id";
 import { createRelease } from "../repo/releases/create";
 import { getReleaseById } from "../repo/releases/get-by-id";
@@ -21,12 +23,10 @@ export class ReleaseConflictError extends Error {
   }
 }
 
-function assertApk(input: CreateReleaseDTO) {
-  if (input.platform !== "android") {
-    throw new ReleaseValidationError("Only android platform is supported");
-  }
-  if (!input.fileName.toLowerCase().endsWith(".apk")) {
-    throw new ReleaseValidationError("fileName must end with .apk");
+function assertReleaseFile(platform: ReleasePlatform, fileName: string) {
+  const message = validateDistributionFileName(platform, fileName);
+  if (message) {
+    throw new ReleaseValidationError(message);
   }
 }
 
@@ -35,14 +35,14 @@ export async function createReleaseService(
   input: CreateReleaseDTO,
   actorId?: string | null,
 ) {
-  assertApk(input);
+  assertReleaseFile(input.platform, input.fileName);
 
   const app = await getAppById(input.appId, client);
   if (!app) throw new ReleaseValidationError("App not found");
 
   try {
     const created = await createRelease(
-      { ...input, platform: "android", createdByUserId: actorId },
+      { ...input, createdByUserId: actorId },
       client,
     );
     return getReleaseById(created.id, client);
@@ -85,9 +85,7 @@ export async function replaceReleaseFileService(
   if (existing.status === "archived") {
     throw new ReleaseValidationError("Cannot replace file on archived release");
   }
-  if (!input.fileName.toLowerCase().endsWith(".apk")) {
-    throw new ReleaseValidationError("fileName must end with .apk");
-  }
+  assertReleaseFile(existing.platform as ReleasePlatform, input.fileName);
 
   const oldFileKey = existing.fileKey;
 

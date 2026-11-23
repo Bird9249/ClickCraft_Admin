@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/kit";
 import type {
+  AddShareLinkDownloadsDTO,
   CreateAppDTO,
   CreateReleaseDTO,
   CreateShareLinkDTO,
+  ExtendShareLinkExpiryDTO,
   ReplaceReleaseFileDTO,
 } from "@/modules/distribution/domain/contracts";
 import type { OffsetPageQueryDTO } from "@/shared/contracts/base";
@@ -159,6 +161,46 @@ export function useRevokeShareLink(releaseId: string) {
       toast.success("ຖອນລິ້ງແລ້ວ");
     },
     onError: () => toast.error("ຖອນລິ້ງບໍ່ສໍເລັດ"),
+  });
+}
+
+export function useExtendShareLinkExpiry(releaseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: ExtendShareLinkExpiryDTO;
+    }) => distributionApi.extendShareLinkExpiry(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({
+        queryKey: distributionKeys.shareLinks(releaseId),
+      });
+      toast.success("ຕໍ່ອາຍຸລິ້ງແລ້ວ");
+    },
+    onError: () => toast.error("ຕໍ່ອາຍຸລິ້ງບໍ່ສໍເລັດ"),
+  });
+}
+
+export function useAddShareLinkDownloads(releaseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: AddShareLinkDownloadsDTO;
+    }) => distributionApi.addShareLinkDownloads(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({
+        queryKey: distributionKeys.shareLinks(releaseId),
+      });
+      toast.success("ເພີ່ມໂຄວຕາດາວໂຫຼດແລ້ວ");
+    },
+    onError: () => toast.error("ເພີ່ມໂຄວຕາດາວໂຫຼດບໍ່ສໍເລັດ"),
   });
 }
 

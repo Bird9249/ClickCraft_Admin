@@ -15,7 +15,20 @@ describe("CreateReleaseSchema", () => {
     expect(parsed.fileName).toBe("app-release.apk");
   });
 
-  test("rejects non-apk fileName", () => {
+  test("accepts file platform zip release", () => {
+    const parsed = CreateReleaseSchema.parse({
+      appId: "clickcraft",
+      platform: "file",
+      version: "1.0.0",
+      buildNumber: "1",
+      fileKey: "uploads/distribution/clickcraft/files/1.0.0-1/assets.zip",
+      fileName: "assets.zip",
+      fileSize: 1000,
+    });
+    expect(parsed.platform).toBe("file");
+  });
+
+  test("rejects non-apk fileName on android", () => {
     const result = CreateReleaseSchema.safeParse({
       appId: "clickcraft",
       version: "1.0.0",
@@ -27,7 +40,20 @@ describe("CreateReleaseSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  test("rejects ios platform", () => {
+  test("rejects blocked file on file platform", () => {
+    const result = CreateReleaseSchema.safeParse({
+      appId: "clickcraft",
+      platform: "file",
+      version: "1.0.0",
+      buildNumber: "1",
+      fileKey: "uploads/distribution/clickcraft/files/1.0.0-1/run.exe",
+      fileName: "run.exe",
+      fileSize: 1000,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects unknown platform", () => {
     const result = CreateReleaseSchema.safeParse({
       appId: "clickcraft",
       platform: "ios",
@@ -42,21 +68,12 @@ describe("CreateReleaseSchema", () => {
 });
 
 describe("ReplaceReleaseFileSchema", () => {
-  test("accepts apk file payload", () => {
+  test("accepts file payload with name", () => {
     const parsed = ReplaceReleaseFileSchema.parse({
-      fileKey: "uploads/distribution/clickcraft/android/1.0.0-1/app.apk",
-      fileName: "app-release.apk",
+      fileKey: "uploads/distribution/clickcraft/files/1.0.0-1/app.zip",
+      fileName: "bundle.zip",
       fileSize: 12_345_678,
     });
-    expect(parsed.fileName).toBe("app-release.apk");
-  });
-
-  test("rejects non-apk fileName", () => {
-    const result = ReplaceReleaseFileSchema.safeParse({
-      fileKey: "uploads/distribution/clickcraft/android/1.0.0-1/app.ipa",
-      fileName: "app.ipa",
-      fileSize: 1000,
-    });
-    expect(result.success).toBe(false);
+    expect(parsed.fileName).toBe("bundle.zip");
   });
 });

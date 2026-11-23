@@ -43,6 +43,9 @@ function resolveContentType(file: File): string | undefined {
   if (lower.endsWith(".apk")) {
     return "application/vnd.android.package-archive";
   }
+  if (lower.endsWith(".zip")) {
+    return "application/zip";
+  }
   if (lower.endsWith(".ipa")) {
     return "application/octet-stream";
   }

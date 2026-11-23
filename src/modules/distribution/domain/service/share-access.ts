@@ -43,3 +43,28 @@ export function generateShareToken(): string {
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
 }
+
+/** ต่ออายุจากวันหมดอายุเดิม (ถ้ายังไม่หมด) หรือจากวันนี้ */
+export function computeExtendedExpiry(
+  currentExpiresAt: Date | null,
+  expiresInDays: number,
+  now: Date = new Date(),
+): Date {
+  const base =
+    currentExpiresAt && currentExpiresAt.getTime() > now.getTime()
+      ? currentExpiresAt
+      : now;
+  const next = new Date(base);
+  next.setUTCDate(next.getUTCDate() + expiresInDays);
+  return next;
+}
+
+/** เพิ่มโควต้าดาวน์โหลด — ลิงก์ไม่จำกัดใช้ downloadCount เป็นฐาน */
+export function computeIncreasedMaxDownloads(
+  maxDownloads: number | null | undefined,
+  downloadCount: number,
+  addDownloads: number,
+): number {
+  const base = maxDownloads ?? downloadCount;
+  return base + addDownloads;
+}

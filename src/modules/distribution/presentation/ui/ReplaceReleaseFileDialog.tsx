@@ -8,6 +8,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/kit";
+import type { ReleasePlatform } from "@/modules/distribution/domain/contracts";
+import {
+  distributionStorageSegment,
+  distributionUploadAccept,
+  distributionUploadHint,
+  platformDisplayLabel,
+  resolveDistributionContentType,
+  validateDistributionFileClient,
+  validateDistributionFileName,
+} from "@/modules/distribution/domain/release-file-policy";
 import type { ReleasesListResult } from "@/modules/distribution/domain/types";
 import { DEFAULT_CHUNK_SIZE } from "@/shared/lib/chunk-upload-s3";
 import { sha256Hex } from "@/shared/lib/sha256-file";
@@ -30,6 +40,7 @@ function formatBytes(bytes: number): string {
 export function ReplaceReleaseFileDialog({ release, onOpenChange }: Props) {
   const replaceFile = useReplaceReleaseFile();
   const open = release != null;
+  const platform = (release?.platform ?? "android") as ReleasePlatform;
 
   const [fileKey, setFileKey] = useState("");
   const [fileName, setFileName] = useState("");
@@ -51,13 +62,17 @@ export function ReplaceReleaseFileDialog({ release, onOpenChange }: Props) {
   const keyPrefix = useMemo(() => {
     if (!release) return "uploads/distribution/pending";
     const slug = release.appSlug ?? "app";
-    return `uploads/distribution/${slug}/android/${release.version}-${release.buildNumber}`;
-  }, [release]);
+    const segment = distributionStorageSegment(platform);
+    return `uploads/distribution/${slug}/${segment}/${release.version}-${release.buildNumber}`;
+  }, [release, platform]);
+
+  const fileValid =
+    !!fileName && validateDistributionFileName(platform, fileName) === null;
 
   const canSubmit =
     !!release &&
     !!fileKey &&
-    fileName.toLowerCase().endsWith(".apk") &&
+    fileValid &&
     fileSize > 0 &&
     fileKey !== release.fileKey &&
     !hashing &&
@@ -82,10 +97,10 @@ export function ReplaceReleaseFileDialog({ release, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>ແທນທີ່ໄຟລ໌ APK</DialogTitle>
+          <DialogTitle>ແທນທີ່ໄຟລ໌</DialogTitle>
           <DialogDescription>
             {release
-              ? `${release.appName} ${release.version} (${release.buildNumber}) — ໄຟລ໌ເກົ່າຈະຖືກລຶບອອກຈາກ storage`
+              ? `${release.appName} ${release.version} (${release.buildNumber}) · ${platformDisplayLabel(platform)} — ໄຟລ໌ເກົ່າຈະຖືກລຶບອອກຈາກ storage`
               : ""}
           </DialogDescription>
         </DialogHeader>
@@ -100,25 +115,23 @@ export function ReplaceReleaseFileDialog({ release, onOpenChange }: Props) {
             </div>
 
             <div className="space-y-1">
-              <p className="font-medium text-sm">ໄຟລ໌ APK ໃໝ່</p>
+              <p className="font-medium text-sm">ໄຟລ໌ໃໝ່</p>
               <ChunkFileUpload
                 keyPrefix={keyPrefix}
                 chunkSize={DEFAULT_CHUNK_SIZE}
-                accept=".apk,application/vnd.android.package-archive"
-                buttonLabel="ເລືອກໄຟລ໌ APK ໃໝ່"
-                hint="ລາກແລະວາງ .apk ຫຼື ກົດເພື່ອເລືອກ — ແບ່ງ chunk ລະ 5MB"
+                accept={distributionUploadAccept(platform)}
+                buttonLabel="ເລືອກໄຟລ໌ໃໝ່"
+                hint={distributionUploadHint(platform)}
                 disabled={hashing || replaceFile.isPending}
                 validateFile={(file) =>
-                  file.name.toLowerCase().endsWith(".apk")
-                    ? null
-                    : "ຮອງຮັບແຕ່ໄຟລ໌ .apk"
+                  validateDistributionFileClient(platform, file)
                 }
                 onSuccess={async (key, file) => {
                   setFileKey(key);
                   setFileName(file.name);
                   setFileSize(file.size);
                   setContentType(
-                    file.type || "application/vnd.android.package-archive",
+                    resolveDistributionContentType(file.name, file.type) ?? null,
                   );
                   setChecksumSha256(null);
                   setHashing(true);

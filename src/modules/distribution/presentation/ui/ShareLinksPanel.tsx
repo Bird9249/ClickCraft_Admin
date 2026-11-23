@@ -12,9 +12,15 @@ import {
   toast,
 } from "@/components/kit";
 import { formatDateLocal, formatDateTimeLocal } from "@/shared/lib/date-time";
-import { type ShareLinkRow, shareLinkAbsoluteUrl } from "../api/client";
 import {
+  type ShareLinkRow,
+  shareLinkAbsoluteUrl,
+  shareLinkDownloadAbsoluteUrl,
+} from "../api/client";
+import {
+  useAddShareLinkDownloads,
   useCreateShareLink,
+  useExtendShareLinkExpiry,
   useRevokeShareLink,
   useShareLinksQuery,
 } from "../api/queries";
@@ -39,6 +45,10 @@ function linkStatus(link: ShareLinkRow): string {
   return "ໃຊ້ງານ";
 }
 
+function canUseLinkActions(link: ShareLinkRow): boolean {
+  return !link.revokedAt;
+}
+
 export function ShareLinksPanel({
   open,
   onOpenChange,
@@ -49,10 +59,15 @@ export function ShareLinksPanel({
   const linksQuery = useShareLinksQuery(releaseId, open);
   const createLink = useCreateShareLink(releaseId);
   const revokeLink = useRevokeShareLink(releaseId);
+  const extendExpiry = useExtendShareLinkExpiry(releaseId);
+  const addDownloads = useAddShareLinkDownloads(releaseId);
   const [label, setLabel] = useState("");
   const [expiresInDays, setExpiresInDays] = useState<1 | 7 | 30>(7);
   const [maxDownloads, setMaxDownloads] = useState("");
   const [qrLinkId, setQrLinkId] = useState<string | null>(null);
+  const [extendLinkId, setExtendLinkId] = useState<string | null>(null);
+  const [quotaLinkId, setQuotaLinkId] = useState<string | null>(null);
+  const [addDownloadsValue, setAddDownloadsValue] = useState("10");
 
   const onCreate = async () => {
     const parsedMax = maxDownloads.trim()
@@ -79,6 +94,28 @@ export function ShareLinksPanel({
     } catch {
       toast.error("ສໍເນົາລິ້ງບໍ່ສໍເລັດ");
     }
+  };
+
+  const onExtend = async (linkId: string, days: 1 | 7 | 30) => {
+    await extendExpiry.mutateAsync({
+      id: linkId,
+      input: { expiresInDays: days },
+    });
+    setExtendLinkId(null);
+  };
+
+  const onAddQuota = async (linkId: string) => {
+    const parsed = Number.parseInt(addDownloadsValue.trim(), 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      toast.error("ກະລຸນາໃສ່ຈຳນວນດາວໂຫຼດທີ່ຕ້ອງການເພີ່ມ");
+      return;
+    }
+    await addDownloads.mutateAsync({
+      id: linkId,
+      input: { addDownloads: parsed },
+    });
+    setQuotaLinkId(null);
+    setAddDownloadsValue("10");
   };
 
   return (
@@ -139,8 +176,12 @@ export function ShareLinksPanel({
             )}
           {linksQuery.data?.data?.map((link) => {
             const status = linkStatus(link);
-            const url = shareLinkAbsoluteUrl(link.publicPath);
+            const pageUrl = shareLinkAbsoluteUrl(link.publicPath);
+            const qrDownloadUrl = shareLinkDownloadAbsoluteUrl(link.token);
             const showQr = qrLinkId === link.id;
+            const showExtend = extendLinkId === link.id;
+            const showQuota = quotaLinkId === link.id;
+            const actionsEnabled = canUseLinkActions(link);
             return (
               <div
                 key={link.id}
@@ -187,6 +228,34 @@ export function ShareLinksPanel({
                     >
                       QR
                     </Button>
+                    {canWrite && actionsEnabled && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setQuotaLinkId(null);
+                            setExtendLinkId((prev) =>
+                              prev === link.id ? null : link.id,
+                            );
+                          }}
+                        >
+                          ຕໍ່ອາຍຸ
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setExtendLinkId(null);
+                            setQuotaLinkId((prev) =>
+                              prev === link.id ? null : link.id,
+                            );
+                          }}
+                        >
+                          ເພີ່ມໂຄວຕາ
+                        </Button>
+                      </>
+                    )}
                     {canWrite && status === "ໃຊ້ງານ" && (
                       <Button
                         size="sm"
@@ -204,12 +273,57 @@ export function ShareLinksPanel({
                     )}
                   </div>
                 </div>
+                {showExtend && canWrite && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
+                    <span className="text-muted-foreground text-xs">
+                      ຕໍ່ອາຍຸເພີ່ມ:
+                    </span>
+                    {([1, 7, 30] as const).map((days) => (
+                      <Button
+                        key={days}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={extendExpiry.isPending}
+                        onClick={() => void onExtend(link.id, days)}
+                      >
+                        +{days}d
+                      </Button>
+                    ))}
+                  </div>
+                )}
+                {showQuota && canWrite && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      className="h-8 w-28"
+                      value={addDownloadsValue}
+                      onChange={(e) => setAddDownloadsValue(e.target.value)}
+                      placeholder="ຈຳນວນ"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={addDownloads.isPending}
+                      onClick={() => void onAddQuota(link.id)}
+                    >
+                      ເພີ່ມດາວໂຫຼດ
+                    </Button>
+                  </div>
+                )}
                 <p className="break-all font-mono text-muted-foreground text-xs">
-                  {url}
+                  {pageUrl}
                 </p>
                 {showQr && (
-                  <div className="flex justify-center pt-1">
-                    <ShareLinkQr url={url} />
+                  <div className="flex flex-col items-center gap-1 pt-1">
+                    <ShareLinkQr
+                      url={qrDownloadUrl}
+                      downloadName={`${link.label?.trim() || "share-link"}-qr.png`}
+                    />
+                    <p className="text-center text-muted-foreground text-xs">
+                      ສະແກນ QR ເພື່ອດາວໂຫຼດໄຟລ໌ໂດຍກົງ
+                    </p>
                   </div>
                 )}
               </div>

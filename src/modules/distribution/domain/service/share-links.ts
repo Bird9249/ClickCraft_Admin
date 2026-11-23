@@ -1,6 +1,6 @@
 import { getPresignedDownloadUrl } from "@/server/utils/presign-download";
 import type { DbTransaction } from "@/shared/types";
-import type { CreateShareLinkDTO } from "../contracts";
+import type { CreateShareLinkDTO, AddShareLinkDownloadsDTO, ExtendShareLinkExpiryDTO } from "../contracts";
 import { getReleaseById } from "../repo/releases/get-by-id";
 import { createShareLink } from "../repo/share-links/create";
 import { getShareLinkById } from "../repo/share-links/get-by-id";
@@ -8,7 +8,10 @@ import { getShareLinkByToken } from "../repo/share-links/get-by-token";
 import { incrementShareLinkDownload } from "../repo/share-links/increment-download";
 import { listShareLinksByRelease } from "../repo/share-links/list-by-release";
 import { revokeShareLink } from "../repo/share-links/revoke";
+import { updateShareLink } from "../repo/share-links/update";
 import {
+  computeExtendedExpiry,
+  computeIncreasedMaxDownloads,
   evaluateShareAccess,
   generateShareToken,
   type ShareAccessDenial,
@@ -107,6 +110,79 @@ export async function revokeShareLinkService(
   if (!existing) return null;
   if (existing.revokedAt) return existing;
   return revokeShareLink(id, client);
+}
+
+async function assertShareLinkMutable(client: DbTransaction, linkId: string) {
+  const link = await getShareLinkById(linkId, client);
+  if (!link) return null;
+  if (link.revokedAt) {
+    throw new ShareLinkValidationError("Cannot modify revoked share link");
+  }
+
+  const release = await getReleaseById(link.releaseId, client);
+  if (!release) {
+    throw new ShareLinkValidationError("Release not found");
+  }
+  if (release.status !== "published") {
+    throw new ShareLinkValidationError(
+      "Share link release is no longer published",
+    );
+  }
+
+  return link;
+}
+
+function toShareLinkResponse(link: NonNullable<Awaited<ReturnType<typeof getShareLinkById>>>) {
+  return {
+    ...link,
+    publicPath: `/d/${link.token}`,
+  };
+}
+
+export async function extendShareLinkExpiryService(
+  client: DbTransaction,
+  id: string,
+  input: ExtendShareLinkExpiryDTO,
+) {
+  const existing = await assertShareLinkMutable(client, id);
+  if (!existing) return null;
+
+  const expiresAt = computeExtendedExpiry(
+    existing.expiresAt,
+    input.expiresInDays ?? 7,
+  );
+
+  const updated = await updateShareLink(id, { expiresAt }, client);
+  if (!updated) {
+    throw new ShareLinkValidationError("Failed to extend share link expiry");
+  }
+
+  return toShareLinkResponse(updated);
+}
+
+export async function addShareLinkDownloadsService(
+  client: DbTransaction,
+  id: string,
+  input: AddShareLinkDownloadsDTO,
+) {
+  const existing = await assertShareLinkMutable(client, id);
+  if (!existing) return null;
+
+  const maxDownloads = computeIncreasedMaxDownloads(
+    existing.maxDownloads,
+    existing.downloadCount,
+    input.addDownloads,
+  );
+  if (maxDownloads > 100_000) {
+    throw new ShareLinkValidationError("Download quota exceeds maximum");
+  }
+
+  const updated = await updateShareLink(id, { maxDownloads }, client);
+  if (!updated) {
+    throw new ShareLinkValidationError("Failed to increase download quota");
+  }
+
+  return toShareLinkResponse(updated);
 }
 
 export async function getPublicShareMetaService(
