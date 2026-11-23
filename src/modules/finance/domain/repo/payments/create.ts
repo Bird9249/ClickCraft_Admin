@@ -1,9 +1,9 @@
+import { eq } from "drizzle-orm";
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
-import { eq } from "drizzle-orm";
 import type { CreatePaymentDTO } from "../../contracts";
-import { nextDocNumber } from "../../service/sequence";
 import { createLedgerFromPaymentIfEnabled } from "../../service/ledger-from-payment";
+import { nextDocNumber } from "../../service/sequence";
 
 export async function createPaymentWithReceipt(
   input: CreatePaymentDTO & { createdBy?: string | null },
@@ -56,14 +56,18 @@ export async function createPaymentWithReceipt(
       amount: input.amount,
       currency: inv.currency,
       notes: input.notes ?? null,
-      showSignature: input.showSignature ?? true,
+      showSignature: false,
       createdBy: input.createdBy ?? null,
     })
     .returning();
 
   await client
     .update(schema.invoice)
-    .set({ amountPaid: newAmountPaid, status: newStatus, updatedAt: new Date() })
+    .set({
+      amountPaid: newAmountPaid,
+      status: newStatus,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.invoice.id, input.invoiceId));
 
   const ledgerEntry = await createLedgerFromPaymentIfEnabled(client, {

@@ -234,7 +234,7 @@ describe("finance sub-items (integration)", () => {
     await cleanupTestData();
   });
 
-  it("persists nested sub-items, scales group on milestone, and duplicates hierarchy", async () => {
+  it("persists nested sub-items on quotation, invoices use milestone label, and duplicates hierarchy", async () => {
     await db.transaction(async (tx) => {
       const { created: customer } = await createCustomerService(tx, {
         input: {
@@ -384,47 +384,20 @@ describe("finance sub-items (integration)", () => {
       expect(invoices[1]!.total).toBe(6_000_000);
 
       const inv1 = await getInvoiceById(invoices[0]!.id, tx);
-      expect(inv1?.lines).toHaveLength(2);
+      expect(inv1?.lines).toHaveLength(1);
       expect(inv1?.lines[0]).toMatchObject({
-        description: "Web Development",
-        unitPrice: 5_000_000,
-        amount: 5_000_000,
+        description: "<p>M1</p>",
+        unitPrice: 6_000_000,
+        amount: 6_000_000,
+        priceOn: "parent",
       });
-      expect(inv1?.lines[0]?.children).toEqual([
-        {
-          description: "UI/UX Design",
-          quantity: 1,
-          unitPrice: 0,
-          sortOrder: 0,
-          children: [],
-        },
-        {
-          description: "Frontend Dev",
-          quantity: 1,
-          unitPrice: 0,
-          sortOrder: 1,
-          children: [],
-        },
-      ]);
-      expect(inv1?.lines[1]).toMatchObject({
-        description: "Hosting (standalone)",
-        unitPrice: 1_000_000,
-        amount: 1_000_000,
-      });
+      expect(inv1?.lines[0]?.children).toEqual([]);
+      expect(inv1?.milestoneLabel).toBe("M1");
 
-      const invFlatLines = await tx
-        .select()
-        .from(schema.invoiceLine)
-        .where(eq(schema.invoiceLine.invoiceId, invoices[0]!.id));
-
-      const invParent = invFlatLines.find(
-        (l) => l.description === "Web Development",
-      );
-      const invSubItems = invFlatLines.filter(
-        (l) => l.parentLineId === invParent?.id,
-      );
-      expect(invSubItems).toHaveLength(2);
-      expect(invSubItems.every((l) => l.unitPrice === 0)).toBe(true);
+      const inv2 = await getInvoiceById(invoices[1]!.id, tx);
+      expect(inv2?.lines).toHaveLength(1);
+      expect(inv2?.lines[0]?.description).toBe("<p>M2</p>");
+      expect(inv2?.lines[0]?.unitPrice).toBe(6_000_000);
 
       const { created: duplicate } = await duplicateQuotationService(tx, {
         id: qt.id,
@@ -451,7 +424,7 @@ describe("finance sub-items (integration)", () => {
     });
   });
 
-  it("persists child-priced groups and scales sub-item prices on milestone", async () => {
+  it("persists child-priced groups on quotation; invoice uses milestone label only", async () => {
     await db.transaction(async (tx) => {
       const { created: customer } = await createCustomerService(tx, {
         input: {
@@ -512,9 +485,10 @@ describe("finance sub-items (integration)", () => {
       });
 
       const inv = await getInvoiceById(invoices[0]!.id, tx);
-      expect(inv?.lines[0]?.priceOn).toBe("children");
-      expect(inv?.lines[0]?.children[0]?.unitPrice).toBe(8_000_000);
-      expect(inv?.lines[0]?.children[1]?.unitPrice).toBe(10_000_000);
+      expect(inv?.lines).toHaveLength(1);
+      expect(inv?.lines[0]?.description).toBe("<p>Full</p>");
+      expect(inv?.lines[0]?.unitPrice).toBe(18_000_000);
+      expect(inv?.lines[0]?.children).toEqual([]);
       expect(inv?.total).toBe(18_000_000);
     });
   });

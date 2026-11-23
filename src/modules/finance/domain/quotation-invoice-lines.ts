@@ -1,43 +1,42 @@
 import type { LineInputDTO } from "./contracts";
-import { scaleLineForMilestone } from "./line-pricing";
-import { toLineInputs } from "./line-tree";
 
 type QuotationForInvoice = {
   number: string;
   total: number;
-  documentMode?: string | null;
-  lines: Array<{
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    sortOrder: number;
-    priceOn?: string | null;
-    children?: QuotationForInvoice["lines"];
-  }>;
 };
 
+type MilestoneForInvoice = {
+  percent: number;
+  label?: string | null;
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+/**
+ * Invoice lines from a quotation milestone.
+ * One billable row named after the milestone — not the QT line items.
+ */
 export function invoiceLinesFromQuotation(
   qt: QuotationForInvoice,
-  percent: number,
+  milestone: MilestoneForInvoice,
 ): LineInputDTO[] {
-  const useAttachment =
-    qt.documentMode === "attachment" || qt.lines.length === 0;
+  const milestoneTotal = Math.round((qt.total * milestone.percent) / 100);
+  const label = milestone.label?.trim() || `Milestone ${milestone.percent}%`;
 
-  if (useAttachment) {
-    const milestoneTotal = Math.round((qt.total * percent) / 100);
-    return [
-      {
-        description: `<p>ຕາມໃບສະເໜີລາຄາ ${qt.number}</p>`,
-        quantity: 1,
-        unitPrice: milestoneTotal,
-        sortOrder: 0,
-        priceOn: "parent",
-        children: [],
-      },
-    ];
-  }
-
-  return toLineInputs(qt.lines).map((line) =>
-    scaleLineForMilestone(line, percent),
-  );
+  return [
+    {
+      description: `<p>${escapeHtml(label)}</p>`,
+      quantity: 1,
+      unitPrice: milestoneTotal,
+      sortOrder: 0,
+      priceOn: "parent",
+      children: [],
+    },
+  ];
 }

@@ -5,14 +5,14 @@ import {
   confirm,
   createSortableColumn,
   DataTable,
-  toast,
   type TanstackReactTable,
+  toast,
 } from "@/components/kit";
 import type { ReceiptsListResult } from "@/modules/finance/domain/types";
 import { formatDateLocal } from "@/shared/lib/date-time";
 import { RowActions } from "@/shared/ui/RowActions";
 import { receiptsApi } from "../api/client";
-import { useUpdateReceipt, useVoidReceipt } from "../api/queries";
+import { useVoidReceipt } from "../api/queries";
 
 type RRow = ReceiptsListResult["data"][number];
 
@@ -40,7 +40,6 @@ export function ReceiptsTable({
   onSortingChange,
 }: Props) {
   const voidReceipt = useVoidReceipt();
-  const updateReceipt = useUpdateReceipt();
 
   const columns: TanstackReactTable.ColumnDef<RRow>[] = useMemo(
     () => [
@@ -57,7 +56,7 @@ export function ReceiptsTable({
         id: "invoiceNumber",
         header: "ໃບເກັບເງິນ",
         cell: ({ row }) => (
-          <span className="text-sm font-mono">
+          <span className="font-mono text-sm">
             {row.original.invoiceNumber ?? "-"}
           </span>
         ),
@@ -112,31 +111,13 @@ export function ReceiptsTable({
           ];
 
           if (row.original.status !== "void") {
-            const showing = row.original.showSignature !== false;
-            actions.push({
-              label: showing ? "ເຊື່ອງລາຍເຊັນ" : "ສະແດງລາຍເຊັນ",
-              onClick: () => {
-                toast.promise(
-                  updateReceipt.mutateAsync({
-                    id: row.original.id,
-                    input: { showSignature: !showing },
-                  }),
-                  {
-                    loading: "ກໍາລັງບັນທຶກ...",
-                    success: "ອັບເດດການຕັ້ງຄ່າ PDF ສໍາເລັດ",
-                    error: "ບັນທຶກລົ້ມເຫຼວ",
-                  },
-                );
-              },
-            });
             actions.push({
               label: "ຍົກເລີກ",
               variant: "destructive",
               onClick: async () => {
                 const ok = await confirm({
                   title: "ຍົກເລີກໃບຮັບເງິນ",
-                  description:
-                    "ການຍົກເລີກຈະຫຼຸດຍອດຊໍາລະຂອງໃບເກັບເງິນ. ທ່ານແນ່ໃຈບໍ?",
+                  description: "ການຍົກເລີກຈະຫຼຸດຍອດຊໍາລະຂອງໃບເກັບເງິນ. ທ່ານແນ່ໃຈບໍ?",
                   actionText: "ຍົກເລີກ",
                   ActionProps: { variant: "destructive" },
                 });
@@ -154,7 +135,7 @@ export function ReceiptsTable({
         },
       },
     ],
-    [voidReceipt, updateReceipt],
+    [voidReceipt],
   );
 
   return (

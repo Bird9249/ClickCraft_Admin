@@ -1,7 +1,11 @@
+import { eq } from "drizzle-orm";
 import { schema } from "@/server/platform/db/client";
 import type { DbTransaction } from "@/shared/types";
-import { eq } from "drizzle-orm";
-import type { CreateFromQuotationDTO, CreateInvoiceDTO, UpdateInvoiceDTO } from "../contracts";
+import type {
+  CreateFromQuotationDTO,
+  CreateInvoiceDTO,
+  UpdateInvoiceDTO,
+} from "../contracts";
 import { invoiceLinesFromQuotation } from "../quotation-invoice-lines";
 import { createInvoice } from "../repo/invoices/create";
 import { getInvoiceById } from "../repo/invoices/get-by-id";
@@ -48,7 +52,8 @@ export async function issueInvoiceService(
 ) {
   const inv = await getInvoiceById(params.id, client);
   if (!inv) throw new Error("Invoice not found");
-  if (inv.status !== "draft") throw new Error("Only draft invoices can be issued");
+  if (inv.status !== "draft")
+    throw new Error("Only draft invoices can be issued");
 
   const [updated] = await client
     .update(schema.invoice)
@@ -66,7 +71,9 @@ export async function voidInvoiceService(
   if (!inv) throw new Error("Invoice not found");
   if (inv.status === "void") throw new Error("Invoice already voided");
   if ((inv.amountPaid ?? 0) > 0)
-    throw new Error("Cannot void an invoice with payments. Void receipts first.");
+    throw new Error(
+      "Cannot void an invoice with payments. Void receipts first.",
+    );
 
   const [updated] = await client
     .update(schema.invoice)
@@ -135,9 +142,9 @@ export async function createInvoicesFromQuotationService(
         currency: qt.currency,
         taxNote: qt.taxNote ?? null,
         notes: conditionNote ?? qt.notes ?? null,
-        showSignature: qt.showSignature ?? true,
+        showSignature: false,
         createdBy: actorId ?? null,
-        lines: invoiceLinesFromQuotation(qt, milestone.percent),
+        lines: invoiceLinesFromQuotation(qt, milestone),
       },
       client,
     );

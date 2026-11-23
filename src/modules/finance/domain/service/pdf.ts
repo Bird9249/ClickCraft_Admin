@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { normalizePaymentSchedule } from "../payment-schedule";
-import { linesToPdfRows } from "../line-tree";
 import { formatDescriptionForPdf } from "@/shared/lib/rich-text-html";
 // Bundled beside out/server/main.js on `bun run compile` (production PDF print)
 import logoFile from "../../../../assets/brand/logo-clickcraft-transparant.webp" with {
   type: "file",
 };
+import { linesToPdfRows } from "../line-tree";
+import { normalizePaymentSchedule } from "../payment-schedule";
 
 /** Bun emits a cwd-relative path in the bundle; resolve against this module dir. */
 function resolveBundledAsset(file: string): string {
@@ -18,7 +18,8 @@ const BRAND_TEAL = "#00A896";
 const CONTACT_EMAIL = "bkeonavong@gmail.com";
 const CONTACT_WHATSAPP = "+856 20 924 91117";
 const CONTACT_FACEBOOK = "ClickCraft";
-const BRAND_TAGLINE = "ຄຣາຟຊອບແວໃຫ້ທຸລະກິດຂອງທ່ານ: ເວົ້າລົມງ່າຍ, ໄດ້ວຽກໄວ, ໃນລາຄາທີ່ເໝາະສົມ";
+const BRAND_TAGLINE =
+  "ຄຣາຟຊອບແວໃຫ້ທຸລະກິດຂອງທ່ານ: ເວົ້າລົມງ່າຍ, ໄດ້ວຽກໄວ, ໃນລາຄາທີ່ເໝາະສົມ";
 
 const LAO_MONTHS = [
   "ມັງກອນ",
@@ -265,12 +266,18 @@ function sharedStyles(): string {
     border-top: 1px dashed var(--brand-border);
   }
   .bank-block h4 { color: var(--brand-dark); font-size: 13px; margin: 0 0 10px; }
+  .bank-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .bank-fields { flex: 1 1 auto; min-width: 0; }
   .bank-qr {
     display: block;
-    width: 120px;
-    height: 120px;
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
     object-fit: contain;
-    margin-top: 10px;
     border: 1px solid var(--brand-border);
     border-radius: 8px;
     background: #fff;
@@ -311,14 +318,64 @@ function sharedStyles(): string {
     margin-top: 16px;
   }
   .sign-line { font-weight: 700; color: var(--brand-dark); margin-top: 64px; }
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
   @media print {
     body { background: #fff; }
-    .toolbar { display: none; }
-    .page { box-shadow: none; margin: 0; max-width: none; border-radius: 0; padding: 24px; }
+    .toolbar { display: none !important; }
+    .page {
+      box-shadow: none;
+      margin: 0;
+      max-width: none;
+      border-radius: 0;
+      padding: 0;
+    }
+    .header {
+      gap: 16px;
+      padding-bottom: 12px;
+    }
+    .brand-logo { height: 48px; }
+    .brand-sub { font-size: 11px; max-width: 220px; }
+    .doc-title { margin: 14px 0 12px; font-size: 18px; }
+    .info-grid { gap: 16px; margin-bottom: 16px; }
+    .info-box { padding: 12px; border-radius: 8px; }
+    table { margin-bottom: 14px; font-size: 12px; }
+    thead th { padding: 8px 10px; }
+    .cell { padding: 8px 10px; }
+    .summary {
+      gap: 16px;
+      padding-top: 12px;
+      margin-bottom: 0;
+      flex-wrap: nowrap;
+      align-items: flex-start;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .milestones { flex: 1 1 auto; }
+    .totals {
+      flex: 0 0 240px;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .bank-block { margin-top: 10px; padding-top: 10px; }
+    .bank-qr { width: 80px; height: 80px; }
+    .signatures {
+      margin-top: 12px;
+      gap: 32px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .sign-line { margin-top: 40px; }
   }`;
 }
 
-function renderLineRows(lines: PdfLine[], currency: string, showQty: boolean): string {
+function renderLineRows(
+  lines: PdfLine[],
+  currency: string,
+  showQty: boolean,
+): string {
   let rowNum = 0;
   return lines
     .map((line) => {
@@ -409,14 +466,18 @@ function renderMetaRows(
 ): string {
   return rows
     .map((row) => {
-      const cls = [row.mono ? "mono" : "", row.teal ? "teal" : ""].filter(Boolean).join(" ");
+      const cls = [row.mono ? "mono" : "", row.teal ? "teal" : ""]
+        .filter(Boolean)
+        .join(" ");
       return `<div class="meta-row"><span class="muted">${row.label}</span><span class="${cls}">${row.value}</span></div>`;
     })
     .join("");
 }
 
 function renderTotals(doc: PdfDocBase): string {
-  const taxLabel = doc.taxNote?.trim() ? escapeHtml(doc.taxNote) : "ພາສີມູນຄ່າເພີ່ມ / VAT (0%)";
+  const taxLabel = doc.taxNote?.trim()
+    ? escapeHtml(doc.taxNote)
+    : "ພາສີມູນຄ່າເພີ່ມ / VAT (0%)";
   return `
     <div class="totals">
       <div class="row"><span>ລວມມູນຄ່າທັງໝົດ / Subtotal</span><span>${formatMoney(doc.subtotal, doc.currency)}</span></div>
@@ -425,7 +486,9 @@ function renderTotals(doc: PdfDocBase): string {
     </div>`;
 }
 
-function renderQuotationSidePanel(doc: PdfDocBase & { validUntil?: Date | string | null }): string {
+function renderQuotationSidePanel(
+  doc: PdfDocBase & { validUntil?: Date | string | null },
+): string {
   const schedule = normalizePaymentSchedule(doc.paymentSchedule);
   const rows = schedule
     .map(
@@ -474,10 +537,14 @@ function renderBankPaymentBlock(bank?: InvoiceBankSettings | null): string {
   return `
     <div class="bank-block">
       <h4>ບັນຊີທະນາຄານ / Bank Transfer</h4>
-      ${bankNameRow}
-      ${accountNameRow}
-      ${accountNumberRow}
-      ${qrRow}
+      <div class="bank-body">
+        <div class="bank-fields">
+          ${bankNameRow}
+          ${accountNameRow}
+          ${accountNumberRow}
+        </div>
+        ${qrRow}
+      </div>
     </div>`;
 }
 
@@ -518,7 +585,10 @@ function renderReceiptSidePanel(
 function renderSignatures(kind: DocKind): string {
   const left =
     kind === "quotation"
-      ? { title: "ສະເໜີລາຄາໂດຍ / Proposed by", name: "( ທີມງານພັດທະນາ ClickCraft )" }
+      ? {
+          title: "ສະເໜີລາຄາໂດຍ / Proposed by",
+          name: "( ທີມງານພັດທະນາ ClickCraft )",
+        }
       : { title: "ອອກເອກະສານໂດຍ / Issued by", name: "( ທີມງານບັນຊີ ClickCraft )" };
   const right =
     kind === "quotation"
@@ -549,11 +619,25 @@ function buildDocumentHtml(options: {
   enTitle: string;
   titleSuffix?: string;
   doc: PdfDocBase;
-  metaRows: Array<{ label: string; value: string; mono?: boolean; teal?: boolean }>;
+  metaRows: Array<{
+    label: string;
+    value: string;
+    mono?: boolean;
+    teal?: boolean;
+  }>;
   sidePanel: string;
   showQty: boolean;
 }): string {
-  const { kind, laoTitle, enTitle, titleSuffix, doc, metaRows, sidePanel, showQty } = options;
+  const {
+    kind,
+    laoTitle,
+    enTitle,
+    titleSuffix,
+    doc,
+    metaRows,
+    sidePanel,
+    showQty,
+  } = options;
   const pageTitle = `${laoTitle} ${doc.number}`;
   const logoHtml = logoDataUri
     ? `<img src="${logoDataUri}" alt="ClickCraft" class="brand-logo" />`
@@ -596,7 +680,11 @@ function buildDocumentHtml(options: {
       ${sidePanel}
       ${renderTotals(doc)}
     </div>
-    ${doc.showSignature === false ? "" : renderSignatures(kind)}
+    ${
+      kind === "quotation" && doc.showSignature !== false
+        ? renderSignatures(kind)
+        : ""
+    }
   </div>
 </body>
 </html>`;
@@ -617,7 +705,11 @@ export function renderQuotationHtml(
       (l) => (!l.isSubItem || l.showSubItemPrice) && l.quantity !== 1,
     ),
     metaRows: [
-      { label: "ເລກທີເອກະສານ / Document No.", value: escapeHtml(doc.number), mono: true },
+      {
+        label: "ເລກທີເອກະສານ / Document No.",
+        value: escapeHtml(doc.number),
+        mono: true,
+      },
       { label: "ວັນທີອອກ / Issue Date", value: formatLaoDate(doc.issueDate) },
       { label: "ກຳນົດຢືນລາຄາ / Validity", value: validityValue },
       {
@@ -648,7 +740,11 @@ export function renderInvoiceHtml(
       (l) => (!l.isSubItem || l.showSubItemPrice) && l.quantity !== 1,
     ),
     metaRows: [
-      { label: "ເລກທີເອກະສານ / Document No.", value: escapeHtml(doc.number), mono: true },
+      {
+        label: "ເລກທີເອກະສານ / Document No.",
+        value: escapeHtml(doc.number),
+        mono: true,
+      },
       { label: "ວັນທີອອກ / Issue Date", value: formatLaoDate(doc.issueDate) },
       {
         label: "ກຳນົດຊຳລະ / Due Date",
@@ -674,7 +770,11 @@ export function renderReceiptHtml(
     doc,
     showQty: false,
     metaRows: [
-      { label: "ເລກທີເອກະສານ / Document No.", value: escapeHtml(doc.number), mono: true },
+      {
+        label: "ເລກທີເອກະສານ / Document No.",
+        value: escapeHtml(doc.number),
+        mono: true,
+      },
       { label: "ວັນທີອອກ / Issue Date", value: formatLaoDate(doc.issueDate) },
       {
         label: "ວິທີຊຳລະ / Method",

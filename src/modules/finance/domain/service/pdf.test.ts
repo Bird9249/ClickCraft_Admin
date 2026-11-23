@@ -82,6 +82,7 @@ describe("finance PDF HTML", () => {
     expect(html).toContain("Milestone 1 — 40%");
     expect(html).toContain("Invoice");
     expect(html).toContain("#00A896");
+    expect(html).not.toContain('class="signatures"');
   });
 
   it("renders invoice bank transfer section from global settings", () => {
@@ -136,6 +137,23 @@ describe("finance PDF HTML", () => {
     expect(html).toContain("DEMO-TRX-001");
     expect(html).toContain("transfer");
     expect(html).toContain("Receipt");
+    expect(html).not.toContain('class="signatures"');
+  });
+
+  it("never shows signature block on invoice even if showSignature is true", () => {
+    const html = renderInvoiceHtml({
+      number: "INV-202607099",
+      issueDate: new Date("2026-07-22"),
+      customerName: "Test Co",
+      currency: "LAK",
+      lines: baseLines,
+      subtotal: 10_000_000,
+      taxAmount: 0,
+      total: 10_000_000,
+      amountPaid: 0,
+      showSignature: true,
+    });
+    expect(html).not.toContain('class="signatures"');
   });
 
   it("renders group lines with bold subtotal in PDF", () => {

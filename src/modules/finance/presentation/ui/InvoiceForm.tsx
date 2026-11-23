@@ -2,9 +2,8 @@ import { z } from "zod";
 import {
   Button,
   FormActions,
-  FormCheckbox,
-  FormInput,
   FormInfiniteCombobox,
+  FormInput,
   FormRoot,
   FormTextarea,
   RHF,
@@ -12,9 +11,9 @@ import {
 } from "@/components/kit";
 import type { CustomerDTO } from "@/modules/customers/domain/contracts";
 import { config } from "@/shared/lib/config";
+import { isRichTextEmpty } from "@/shared/lib/rich-text-html";
 import { fetchLookupForInfinite, hydrateLookupItem } from "@/shared/lib/utils";
 import { LineItemsEditor } from "./LineItemsEditor";
-import { isRichTextEmpty } from "@/shared/lib/rich-text-html";
 
 const RichTextDescriptionSchema = z
   .string()
@@ -59,7 +58,7 @@ const InvoiceFormSchema = z.object({
   currency: z.string().default("LAK"),
   taxNote: z.string().optional(),
   notes: z.string().optional(),
-  showSignature: z.boolean().default(true),
+  showSignature: z.boolean().default(false),
   lines: z.array(LineSchema).min(1, "ຕ້ອງມີຢ່າງໜ້ອຍ 1 ລາຍການ"),
 });
 
@@ -84,7 +83,7 @@ export function InvoiceForm({
       currency: "LAK",
       taxNote: "VAT 0%",
       notes: "",
-      showSignature: true,
+      showSignature: false,
       lines: [
         {
           description: "",
@@ -114,10 +113,7 @@ export function InvoiceForm({
             requiredMark
             queryKey={["customers-lookup"]}
             queryFn={(args) =>
-              fetchLookupForInfinite(
-                `${config.apiUrl}/customers/lookup`,
-                args,
-              )
+              fetchLookupForInfinite(`${config.apiUrl}/customers/lookup`, args)
             }
             preloadQueryFn={(id) =>
               hydrateLookupItem(`${config.apiUrl}/customers/lookup`, id)
@@ -138,13 +134,6 @@ export function InvoiceForm({
         <FormInput name="taxNote" label="ຫມາຍເຫດພາສີ" placeholder="VAT 0%" />
         <div className="md:col-span-2">
           <FormTextarea name="notes" label="ໝາຍເຫດ" placeholder="ໝາຍເຫດ" />
-        </div>
-        <div className="md:col-span-2">
-          <FormCheckbox
-            name="showSignature"
-            label="ສະແດງຊ່ອງລາຍເຊັນໃນ PDF"
-            hint="ປິດໄວ້ຖ້າບໍ່ຕ້ອງການພື້ນທີ່ເຊັນໃນເອກະສານ"
-          />
         </div>
       </div>
 
